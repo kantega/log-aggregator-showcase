@@ -42,19 +42,18 @@ echo "  Adapter Noark B:    http://localhost:8083"
 echo "  External APIs Mock: http://localhost:8084"
 echo "  RabbitMQ Management: http://localhost:15672"
 echo ""
-echo "Type 'stop' or press Ctrl+C to stop all services"
+echo "Type 'stop' to stop all services"
 echo ""
 
 cleanup() {
   echo ""
   echo "=== Stopping all services ==="
-  pkill -f 'spring-boot:run'
+  pkill -f 'spring-boot:run' 2>/dev/null
+  pkill -f 'ng serve' 2>/dev/null
   kill $(jobs -p) 2>/dev/null
   echo "=== All services stopped ==="
   exit 0
 }
-
-trap cleanup INT TERM
 
 while read -r line; do
   if [ "$line" = "stop" ]; then
