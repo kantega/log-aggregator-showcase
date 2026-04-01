@@ -43,7 +43,7 @@ class LogManagerServiceTest {
         assertEquals("Test Group", result.getName());
         assertEquals("OPEN", result.getStatus());
         verify(logGroupRepository).save(any(LogGroup.class));
-        verify(rabbitMQPublisher).publishEvent(eq("GROUP_CREATED"), eq(group), isNull());
+        verify(rabbitMQPublisher).publishEvent(eq("GROUP_CREATED"), eq(group), isNull(), isNull());
     }
 
     @Test
@@ -58,7 +58,7 @@ class LogManagerServiceTest {
 
         assertEquals("Test entry", result.getContent());
         verify(logEntryRepository).save(any(LogEntry.class));
-        verify(rabbitMQPublisher).publishEvent(eq("ENTRY_ADDED"), eq(group), eq("Test entry"));
+        verify(rabbitMQPublisher).publishEvent(eq("ENTRY_ADDED"), eq(group), eq("Test entry"), eq(1L));
     }
 
     @Test
@@ -82,7 +82,7 @@ class LogManagerServiceTest {
 
         assertEquals("CLOSED", result.getStatus());
         verify(logGroupRepository).save(any(LogGroup.class));
-        verify(rabbitMQPublisher).publishEvent(eq("GROUP_CLOSED"), any(LogGroup.class), isNull());
+        verify(rabbitMQPublisher).publishEvent(eq("GROUP_CLOSED"), any(LogGroup.class), isNull(), isNull());
     }
 
     @Test

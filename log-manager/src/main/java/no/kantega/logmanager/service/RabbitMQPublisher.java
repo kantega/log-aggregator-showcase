@@ -19,12 +19,13 @@ public class RabbitMQPublisher {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    public void publishEvent(String eventType, LogGroup group, String entryContent) {
+    public void publishEvent(String eventType, LogGroup group, String entryContent, Long entryId) {
         Map<String, Object> message = new HashMap<>();
         message.put("eventType", eventType);
         message.put("groupId", group.getId());
         message.put("groupName", group.getName());
         message.put("entryContent", entryContent);
+        message.put("entryId", entryId);
         message.put("timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
         rabbitTemplate.convertAndSend(

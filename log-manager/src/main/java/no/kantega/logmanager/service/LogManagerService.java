@@ -32,7 +32,7 @@ public class LogManagerService {
                 .name(name)
                 .build();
         group = logGroupRepository.save(group);
-        rabbitMQPublisher.publishEvent("GROUP_CREATED", group, null);
+        rabbitMQPublisher.publishEvent("GROUP_CREATED", group, null, null);
         return group;
     }
 
@@ -59,7 +59,7 @@ public class LogManagerService {
                 .group(group)
                 .build();
         entry = logEntryRepository.save(entry);
-        rabbitMQPublisher.publishEvent("ENTRY_ADDED", group, content);
+        rabbitMQPublisher.publishEvent("ENTRY_ADDED", group, content, entry.getId());
         return entry;
     }
 
@@ -70,7 +70,7 @@ public class LogManagerService {
         }
         group.setStatus("CLOSED");
         group = logGroupRepository.save(group);
-        rabbitMQPublisher.publishEvent("GROUP_CLOSED", group, null);
+        rabbitMQPublisher.publishEvent("GROUP_CLOSED", group, null, null);
         return group;
     }
 }
