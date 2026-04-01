@@ -73,6 +73,40 @@ log-aggregator-showcase/
 - [x] Reactive forms, data-testid selectors throughout
 - [x] Tailwind CSS styling
 
+### Edge (F3) — COMPLETE
+- [x] `RabbitConfig` — binds to exchange `log-manager-exchange`, queue `log-events-queue`, routing key `log.event`
+- [x] `LogEventListener` — consumes GROUP_CREATED, ENTRY_ADDED, GROUP_CLOSED events from RabbitMQ
+- [x] `ArchiveGroup` MongoDB document — groupId, name, status (PENDING/IN_PROGRESS/ARCHIVED/FAILED), entries, errors, retryCount
+- [x] `ArchiveGroupRepository` — findByGroupId, findByStatus
+- [x] `ArchiveService` — sends archive requests to both adapters, records errors, retry up to 3 attempts
+- [x] `AdapterClient` — HTTP client for calling Adapter A and B
+- [x] `StatusController` — GET /api/status (alias /api/archive-state), GET /api/groups, GET /api/groups/{id}, POST /api/retry
+- [x] `RetryScheduler` — scheduled retry every 60s for failed groups
+- [x] `LogEvent` model with `@JsonAlias` to handle both PLAN format and log-manager's actual field names (eventType→event, groupName→name, entryContent→content)
+- [x] Unit tests: `ArchiveServiceTest` (5 tests), `LogEventListenerTest` (6 tests), `StatusControllerTest` (5 tests)
+
+### Adapter Noark A (F4) — COMPLETE
+- [x] `ArchiveController` — POST /archive, returns 200 on success, 502 on failure
+- [x] `ArchiveService` — orchestrates transform + POST
+- [x] `TransformService` — converts ArchiveRequest to NoarkAPayload (JSON with title, description, documents)
+- [x] `NoarkAClient` — POSTs JSON payload to configurable Noark A endpoint (http://localhost:8084/api/noarka)
+- [x] Unit tests: `TransformServiceTest` (3 tests), `ArchiveServiceTest` (3 tests), `ArchiveControllerTest` (2 tests)
+
+### Adapter Noark B (F5) — COMPLETE
+- [x] `ArchiveController` — POST /archive, returns 200 on success, 502 on failure
+- [x] `ArchiveService` — orchestrates ZIP creation + POST
+- [x] `ZipService` — creates ZIP file with metadata.json + entry-N.txt files
+- [x] `NoarkBClient` — POSTs ZIP binary to configurable Noark B endpoint (http://localhost:8084/api/noarkb)
+- [x] Unit tests: `ZipServiceTest` (4 tests), `ArchiveServiceTest` (3 tests), `ArchiveControllerTest` (2 tests)
+
+### External APIs Mock (F6) — COMPLETE
+- [x] `NoarkAController` — catch-all POST/GET/PUT on /api/noarka/**, returns configurable responses
+- [x] `NoarkBController` — catch-all POST/GET/PUT on /api/noarkb/**, returns configurable responses
+- [x] `TestController` — POST /api/test/setup (configure status/body/delay per endpoint), POST /api/test/reset, GET /api/test/history
+- [x] `MockService` — in-memory config and request history tracking, thread-safe
+- [x] Configurable response delays for timeout testing
+- [x] Unit tests: `MockServiceTest` (6 tests), `NoarkAControllerTest` (4 tests), `TestControllerTest` (3 tests)
+
 ### Integration tests — STARTED
 - [x] Playwright project set up with config
 - [x] `log-group-lifecycle.spec.ts` — full e2e test: create group → add 3 entries → close → verify UI state + RabbitMQ message count
@@ -81,10 +115,10 @@ log-aggregator-showcase/
 ## What's left to do
 
 ### Implementation (per PRD)
-- [ ] **F3: Edge** — RabbitMQ consumer, MongoDB state, push to adapters, error recording
-- [ ] **F4: Adapter Noark A** — receive from Edge, transform to JSON, POST to Noark A
-- [ ] **F5: Adapter Noark B** — receive from Edge, transform to ZIP, POST to Noark B
-- [ ] **F6: external-apis-mock** — mock Noark A/B endpoints, test setup/reset/history
+- [x] **F3: Edge** — RabbitMQ consumer, MongoDB state, push to adapters, error recording, retry logic, status API
+- [x] **F4: Adapter Noark A** — receive from Edge, transform to JSON, POST to Noark A
+- [x] **F5: Adapter Noark B** — receive from Edge, transform to ZIP, POST to Noark B
+- [x] **F6: external-apis-mock** — mock Noark A/B endpoints, test setup/reset/history, configurable delays
 - [ ] **Integration tests** — error handling test, exponential backoff test
 
 ### Claude Code infra
