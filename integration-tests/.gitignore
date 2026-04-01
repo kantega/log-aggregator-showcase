@@ -1,0 +1,12 @@
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/.playwright-mcp/console-2026-04-01T19-29-33-759Z.log
+/.playwright-mcp/console-2026-04-01T19-58-15-521Z.log
+/.playwright-mcp/page-2026-04-01T19-29-34-014Z.yml
+/.playwright-mcp/page-2026-04-01T19-58-15-680Z.yml

@@ -66,6 +66,7 @@ A microservice-based log management system where users create and manage log gro
 | F1.c | P0 | User can close a log group (marks as archived, becomes read-only) |
 | F1.d | P1 | User can browse all groups (open and archived) and view their entries |
 | F1.e | P1 | UI shows archiving status per group (pending, archived, failed) |
+| F1.f | P0 | Layout: left side — Log Manager (groups, entries, actions); right side — live overview panels showing current state of RabbitMQ, MongoDB (Edge), and external-apis-mock |
 
 ### 6.2 Log Manager — Backend (Spring Boot 3 + MySQL)
 
