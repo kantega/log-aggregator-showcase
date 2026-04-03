@@ -114,15 +114,15 @@ log-aggregator-showcase/
 
 ## What's left to do
 
-### Implementation (per PRD)
-- [x] **F3: Edge** — RabbitMQ consumer, MongoDB state, push to adapters, error recording, retry logic, status API
-- [x] **F4: Adapter Noark A** — receive from Edge, transform to JSON, POST to Noark A
-- [x] **F5: Adapter Noark B** — receive from Edge, transform to ZIP, POST to Noark B
-- [x] **F6: external-apis-mock** — mock Noark A/B endpoints, test setup/reset/history, configurable delays
-- [ ] **Integration tests** — error handling test, exponential backoff test
+### Open GitHub issue
+- [ ] **Issue #2** — Upgrade right-side panels: WebSocket RabbitMQ view, detailed Edge panel with retry, mock setup controls, global RESET button. See: https://github.com/kantega/log-aggregator-showcase/issues/2
+
+### Integration tests
+- [ ] Error handling test — configure mock to 500 → close group → verify FAILED in Edge
+- [ ] Exponential backoff test — mock fails twice then succeeds → verify retries with increasing delay (this test is run on stage after live-coding backoff)
 
 ### Claude Code infra
-- [x] Root `CLAUDE.md` — architecture, service map, tech stack, port map, API contracts, demo flow
+- [x] Root `CLAUDE.md` — architecture, service map, tech stack, port map, API contracts, demo flow, sub-project guidance
 - [x] `integration-tests/CLAUDE.md` — Playwright setup, agents, mock API usage
 - [x] `frontend/.claude/CLAUDE.md` — Angular/TypeScript best practices
 - [ ] Per-service `CLAUDE.md` for Spring Boot services (log-manager, edge, adapters, mock)
@@ -133,6 +133,13 @@ log-aggregator-showcase/
 1. Run happy path test — show green results
 2. Run error test — show failure captured in Edge MongoDB
 3. Live-code exponential backoff with Claude Code, run backoff test to prove it works
+
+## Agent workflow notes
+
+- **All agents start from the repo root.** They load root CLAUDE.md automatically.
+- **Playwright MCP + browser agents** are only available when started from `integration-tests/`. Root agents can write test files and run `cd integration-tests && npx playwright test`, but cannot do interactive browser debugging.
+- **To debug frontend in a browser**, start a separate agent from `integration-tests/` — it has the playwright-test MCP server and 3 specialized agents (planner, generator, healer).
+- **Angular coding standards** are in `frontend/.claude/CLAUDE.md` — root agents should read this before modifying Angular code.
 
 ## Out of scope
 

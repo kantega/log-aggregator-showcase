@@ -103,6 +103,19 @@ npx playwright test --trace on            # run all tests
 npx playwright test tests/specific.spec.ts # run one test
 ```
 
+## Working with sub-projects
+
+Two sub-projects have their own `.claude/` configuration with specialized tools:
+
+- **`integration-tests/`** — has its own CLAUDE.md, 3 Playwright agents (planner, generator, healer), a playwright-cli skill, and a playwright-test MCP server for browser automation
+- **`frontend/`** — has its own CLAUDE.md with Angular/TypeScript coding standards, and an angular-cli MCP server
+
+**Important for agents started from root:** The playwright skill, MCP servers, and agents in sub-folders are NOT available when running from the repo root. If your task involves:
+
+- **Writing or running Playwright tests** → Write the test files from root, but run them with `cd integration-tests && npx playwright test`
+- **Debugging UI in a browser** → You need to be started from `integration-tests/` to access the playwright-test MCP and browser automation agents
+- **Angular-specific work** → Read `frontend/.claude/CLAUDE.md` before modifying Angular code (signals, OnPush, standalone components, etc.)
+
 ## Presentation demo flow
 
 This project exists for a live demo with three acts:
