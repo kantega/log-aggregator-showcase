@@ -38,7 +38,7 @@ test.describe('Error Handling — Noark B 500 Failure', () => {
 
     // Wait for Edge to show FAILED (Noark B fails on GROUP_CLOSED)
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       let foundFailed = false;
       for (let i = 0; i < count; i++) {

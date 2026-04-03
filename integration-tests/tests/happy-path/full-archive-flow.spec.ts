@@ -52,7 +52,7 @@ test.describe('Happy Path E2E — Full Archive Flow', () => {
     // Find the edge group card — it uses the group ID from the backend
     // We wait for any edge group card with ARCHIVED status to appear
     await expect(async () => {
-      const archiveCards = page.locator('[data-testid^="edge-group-"]');
+      const archiveCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await archiveCards.count();
       let found = false;
       for (let i = 0; i < count; i++) {

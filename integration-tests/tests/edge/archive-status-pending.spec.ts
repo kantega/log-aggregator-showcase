@@ -29,7 +29,7 @@ test.describe('Edge Archive Tracking — PENDING Status', () => {
 
     // Check Edge panel shows PENDING or IN_PROGRESS before the delay resolves
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       expect(count).toBeGreaterThan(0);
       const lastCard = edgeCards.last();
@@ -44,7 +44,7 @@ test.describe('Edge Archive Tracking — PENDING Status', () => {
     await expect(page.getByTestId('group-detail-status')).toHaveText('CLOSED');
 
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       let foundArchived = false;
       for (let i = 0; i < count; i++) {

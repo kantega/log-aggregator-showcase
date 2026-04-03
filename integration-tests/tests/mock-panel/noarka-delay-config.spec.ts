@@ -38,7 +38,7 @@ test.describe('Mock Panel Controls — Noark A Delay Config', () => {
 
     // Immediately check Edge — should NOT be ARCHIVED yet (delay is 3s)
     await page.waitForTimeout(500);
-    const edgeCards = page.locator('[data-testid^="edge-group-"]');
+    const edgeCards = page.locator('button[data-testid^="edge-group-"]');
     const count = await edgeCards.count();
     if (count > 0) {
       const lastCard = edgeCards.last();
@@ -54,7 +54,7 @@ test.describe('Mock Panel Controls — Noark A Delay Config', () => {
     await expect(page.getByTestId('group-detail-status')).toHaveText('CLOSED');
 
     await expect(async () => {
-      const cards = page.locator('[data-testid^="edge-group-"]');
+      const cards = page.locator('button[data-testid^="edge-group-"]');
       const cnt = await cards.count();
       let foundArchived = false;
       for (let i = 0; i < cnt; i++) {

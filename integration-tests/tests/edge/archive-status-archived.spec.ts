@@ -30,7 +30,7 @@ test.describe('Edge Archive Tracking — ARCHIVED Status', () => {
 
     // Wait for Edge card to show ARCHIVED
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       let foundArchived = false;
       for (let i = 0; i < count; i++) {

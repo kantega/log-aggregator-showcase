@@ -35,9 +35,12 @@ test.describe('Retry Mechanism — Max Retries Exceeded', () => {
     await page.getByTestId('add-entry-button').click();
     await expect(page.getByTestId('entry-content').filter({ hasText: 'Retry entry' })).toBeVisible();
 
+    // Close the group to trigger archiving (Edge only archives on GROUP_CLOSED)
+    await page.getByTestId('close-group-button').click();
+
     // Wait for Edge to exhaust retries and show FAILED
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       let foundFailed = false;
       for (let i = 0; i < count; i++) {

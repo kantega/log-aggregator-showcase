@@ -21,7 +21,7 @@ test.describe('Edge Archive Tracking — Group Card Appears', () => {
 
     // Wait for Edge panel to show a card with a status badge
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       expect(count).toBeGreaterThan(0);
       // Verify at least one card has a visible status badge

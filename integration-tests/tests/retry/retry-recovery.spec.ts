@@ -35,9 +35,12 @@ test.describe('Retry Mechanism — Recovery', () => {
     await page.getByTestId('add-entry-button').click();
     await expect(page.getByTestId('entry-content').filter({ hasText: 'Recovery entry' })).toBeVisible();
 
+    // Close the group to trigger archiving (Edge only archives on GROUP_CLOSED)
+    await page.getByTestId('close-group-button').click();
+
     // Wait for FAILED status in Edge
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       let foundFailed = false;
       for (let i = 0; i < count; i++) {
@@ -59,7 +62,7 @@ test.describe('Retry Mechanism — Recovery', () => {
     });
 
     // Click the failed Edge card to select it, then click retry
-    const edgeCards = page.locator('[data-testid^="edge-group-"]');
+    const edgeCards = page.locator('button[data-testid^="edge-group-"]');
     const count = await edgeCards.count();
     for (let i = 0; i < count; i++) {
       const statusEl = edgeCards.nth(i).getByTestId('edge-group-status');
@@ -73,11 +76,11 @@ test.describe('Retry Mechanism — Recovery', () => {
     }
 
     // Click retry button
-    await page.getByTestId('edge-retry-button').click();
+    await page.getByTestId('edge-retry-button').first().click();
 
     // Wait for ARCHIVED status
     await expect(async () => {
-      const cards = page.locator('[data-testid^="edge-group-"]');
+      const cards = page.locator('button[data-testid^="edge-group-"]');
       const cnt = await cards.count();
       let foundArchived = false;
       for (let i = 0; i < cnt; i++) {

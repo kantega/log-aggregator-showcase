@@ -41,7 +41,7 @@ test.describe('Reset Functionality — Global Reset', () => {
 
     // Verify Edge panel is empty
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       expect(count).toBe(0);
     }).toPass({ timeout: 5000 });

@@ -4,7 +4,10 @@ const BASE_URL = 'http://localhost:4200';
 const MOCK_URL = 'http://localhost:8084';
 
 test.describe('Error Handling — Noark B Skips ENTRY_ADDED', () => {
-  test.beforeEach(async ({ request }) => {
+  test.beforeEach(async ({ request, page }) => {
+    // Double-reset: first reset, wait for in-flight requests from prior tests to drain, then reset again
+    await request.post(`${MOCK_URL}/api/test/reset`);
+    await page.waitForTimeout(2000);
     await request.post(`${MOCK_URL}/api/test/reset`);
   });
 
@@ -32,7 +35,7 @@ test.describe('Error Handling — Noark B Skips ENTRY_ADDED', () => {
     // Wait a moment for archiving to process
     await page.waitForTimeout(3000);
 
-    // Check history: Noark A should have requests, Noark B should have 0
+    // Check history: Noark A should have new requests, Noark B should have 0 new requests
     let historyResponse = await request.get(`${MOCK_URL}/api/test/history`);
     let history = await historyResponse.json();
     let noarkbRequests = history.filter((r: any) => r.endpoint === 'noarkb');
@@ -48,7 +51,7 @@ test.describe('Error Handling — Noark B Skips ENTRY_ADDED', () => {
     // Wait for archiving to complete
     await page.waitForTimeout(3000);
 
-    // Noark B should now have exactly 1 request (GROUP_CLOSED only)
+    // Noark B should now have exactly 1 new request (GROUP_CLOSED only)
     historyResponse = await request.get(`${MOCK_URL}/api/test/history`);
     history = await historyResponse.json();
     noarkbRequests = history.filter((r: any) => r.endpoint === 'noarkb');

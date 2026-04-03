@@ -40,7 +40,7 @@ test.describe('Reset Functionality — Post-Reset', () => {
 
     // Verify Edge shows ARCHIVED
     await expect(async () => {
-      const edgeCards = page.locator('[data-testid^="edge-group-"]');
+      const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
       let foundArchived = false;
       for (let i = 0; i < count; i++) {
