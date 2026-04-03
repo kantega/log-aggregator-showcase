@@ -26,7 +26,7 @@ Organizations need to archive log data to external NOARK-compliant archiving sys
 
 ## 4. Proposed Solution / Elevator Pitch
 
-A microservice-based log management system where users create and manage log groups through a web UI. Every event (group creation, new log entry, group close) is forwarded through a message queue to an archiving buffer service ("Edge"), which routes data to adapter services. Each adapter transforms the data to match its target NOARK system's API contract, keeping Edge decoupled from external implementation details.
+A microservice-based log management system where users create and manage log groups through a web UI. Every event (group creation, new log entry, group close) is forwarded through a message queue to an archiving buffer service ("Edge"), which routes data to adapter services based on configurable trigger types — some adapters receive individual entries immediately, others receive the full group on close. Each adapter transforms the data to match its target NOARK system's API contract, keeping Edge decoupled from external implementation details.
 
 ---
 
@@ -48,6 +48,7 @@ A microservice-based log management system where users create and manage log gro
      │           │
 ┌────▼────┐ ┌───▼─────┐
 │Adapter A│ │Adapter B│  Spring Boot 3 each
+│(per-entry)│(per-group)│
 └────┬────┘ └───┬─────┘
      │          │
   Noark A    Noark B     (external, customer-hosted)
@@ -84,7 +85,8 @@ A microservice-based log management system where users create and manage log gro
 |----|----------|-------------|
 | F3.a | P0 | Consume messages from RabbitMQ (group events, log entry events) |
 | F3.b | P0 | Maintain archive state in MongoDB (per group: pending, in-progress, archived, failed) |
-| F3.c | P0 | Push archive-worthy data to Adapter A and Adapter B (fire to both) |
+| F3.c | P0 | Route data to adapters based on configurable trigger type: ON_ENTRY adapters receive each entry immediately when added; ON_GROUP_CLOSE adapters receive the full group when closed. Edge is adapter-agnostic — it has no knowledge of Noark A/B implementation details |
+| F3.c2 | P0 | Track per-entry, per-adapter archive status (pending, in-progress, archived, failed) using a generic adapter status map |
 | F3.d | P0 | Record errors from adapters in MongoDB with full context |
 | F3.e | P1 | Expose status API for Log Manager to query archiving progress |
 | F3.f | P1 | Retry failed archiving attempts (basic retry) |
@@ -93,7 +95,7 @@ A microservice-based log management system where users create and manage log gro
 
 | ID | Priority | Requirement |
 |----|----------|-------------|
-| F4.a | P0 | Receive archive request from Edge |
+| F4.a | P0 | Receive per-entry archive requests from Edge (triggered on each entry add) |
 | F4.b | P0 | Transform data into JSON payload per Noark A Swagger spec |
 | F4.c | P0 | POST JSON to Noark A endpoint (configurable target URL) |
 | F4.d | P0 | Return success/failure result to Edge |
@@ -102,7 +104,7 @@ A microservice-based log management system where users create and manage log gro
 
 | ID | Priority | Requirement |
 |----|----------|-------------|
-| F5.a | P0 | Receive archive request from Edge |
+| F5.a | P0 | Receive per-group archive requests from Edge (triggered on group close, contains all entries) |
 | F5.b | P0 | Transform data into ZIP file per Noark B Swagger spec |
 | F5.c | P0 | POST ZIP to Noark B endpoint (configurable target URL) |
 | F5.d | P0 | Return success/failure result to Edge |

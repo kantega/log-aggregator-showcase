@@ -1,14 +1,17 @@
 package no.kantega.edge.service;
 
+import no.kantega.edge.config.AdapterConfig;
+import no.kantega.edge.config.AdapterConfig.TriggerType;
+import no.kantega.edge.config.AdaptersProperties;
 import no.kantega.edge.model.ArchiveGroup;
 import no.kantega.edge.model.ArchiveGroup.ArchiveError;
 import no.kantega.edge.model.ArchiveGroup.ArchiveStatus;
+import no.kantega.edge.model.ArchiveGroup.LogEntryData;
 import no.kantega.edge.model.ArchiveRequest;
 import no.kantega.edge.model.ArchiveResult;
 import no.kantega.edge.repository.ArchiveGroupRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -24,41 +27,71 @@ public class ArchiveService {
 
     private final ArchiveGroupRepository repository;
     private final AdapterClient adapterClient;
-    private final String adapterNoarkAUrl;
-    private final String adapterNoarkBUrl;
+    private final List<AdapterConfig> adapters;
 
     public ArchiveService(
             ArchiveGroupRepository repository,
             AdapterClient adapterClient,
-            @Value("${adapter.noark-a.url}") String adapterNoarkAUrl,
-            @Value("${adapter.noark-b.url}") String adapterNoarkBUrl) {
+            AdaptersProperties adaptersProperties) {
         this.repository = repository;
         this.adapterClient = adapterClient;
-        this.adapterNoarkAUrl = adapterNoarkAUrl;
-        this.adapterNoarkBUrl = adapterNoarkBUrl;
+        this.adapters = adaptersProperties.getAdapters();
+    }
+
+    public void archiveEntry(ArchiveGroup group, LogEntryData entry) {
+        List<AdapterConfig> entryAdapters = adapters.stream()
+                .filter(a -> a.getTrigger() == TriggerType.ON_ENTRY)
+                .collect(Collectors.toList());
+
+        ArchiveRequest request = new ArchiveRequest(
+                group.getGroupId(),
+                group.getName(),
+                List.of(new ArchiveRequest.LogEntry(entry.getEntryId(), entry.getContent(), entry.getTimestamp()))
+        );
+
+        for (AdapterConfig adapter : entryAdapters) {
+            entry.getAdapterStatuses().put(adapter.getName(), ArchiveStatus.IN_PROGRESS);
+            repository.save(group);
+
+            ArchiveResult result = adapterClient.sendToAdapter(adapter.getUrl(), request);
+
+            if (result.isSuccess()) {
+                entry.getAdapterStatuses().put(adapter.getName(), ArchiveStatus.ARCHIVED);
+                log.info("Entry {} archived to {} for group {}", entry.getEntryId(), adapter.getName(), group.getGroupId());
+            } else {
+                entry.getAdapterStatuses().put(adapter.getName(), ArchiveStatus.FAILED);
+                group.getErrors().add(new ArchiveError(adapter.getName(), result.getMessage(), Instant.now()));
+                log.error("Failed to archive entry {} to {} for group {}: {}",
+                        entry.getEntryId(), adapter.getName(), group.getGroupId(), result.getMessage());
+            }
+        }
+
+        group.setUpdatedAt(Instant.now());
+        repository.save(group);
     }
 
     public void archiveGroup(ArchiveGroup group) {
+        List<AdapterConfig> groupAdapters = adapters.stream()
+                .filter(a -> a.getTrigger() == TriggerType.ON_GROUP_CLOSE)
+                .collect(Collectors.toList());
+
         group.setStatus(ArchiveStatus.IN_PROGRESS);
         group.setUpdatedAt(Instant.now());
         repository.save(group);
 
         ArchiveRequest request = toArchiveRequest(group);
 
-        ArchiveResult resultA = adapterClient.sendToAdapter(adapterNoarkAUrl, request);
-        ArchiveResult resultB = adapterClient.sendToAdapter(adapterNoarkBUrl, request);
-
         List<ArchiveError> newErrors = new ArrayList<>();
-        if (!resultA.isSuccess()) {
-            newErrors.add(new ArchiveError("noark-a", resultA.getMessage(), Instant.now()));
-        }
-        if (!resultB.isSuccess()) {
-            newErrors.add(new ArchiveError("noark-b", resultB.getMessage(), Instant.now()));
+        for (AdapterConfig adapter : groupAdapters) {
+            ArchiveResult result = adapterClient.sendToAdapter(adapter.getUrl(), request);
+            if (!result.isSuccess()) {
+                newErrors.add(new ArchiveError(adapter.getName(), result.getMessage(), Instant.now()));
+            }
         }
 
         if (newErrors.isEmpty()) {
             group.setStatus(ArchiveStatus.ARCHIVED);
-            log.info("Group {} archived successfully to both adapters", group.getGroupId());
+            log.info("Group {} archived successfully", group.getGroupId());
         } else {
             group.getErrors().addAll(newErrors);
             group.setRetryCount(group.getRetryCount() + 1);

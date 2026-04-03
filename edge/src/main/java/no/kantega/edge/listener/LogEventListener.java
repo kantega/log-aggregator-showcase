@@ -55,11 +55,14 @@ public class LogEventListener {
 
     private void handleEntryAdded(LogEvent event) {
         repository.findByGroupId(event.getGroupId()).ifPresentOrElse(group -> {
-            group.getEntries().add(new LogEntryData(
-                    event.getEntryId(), event.getContent(), event.getTimestamp()));
+            LogEntryData entry = new LogEntryData(
+                    event.getEntryId(), event.getContent(), event.getTimestamp());
+            group.getEntries().add(entry);
             group.setUpdatedAt(Instant.now());
             repository.save(group);
             log.info("Added entry {} to group {}", event.getEntryId(), event.getGroupId());
+
+            archiveService.archiveEntry(group, entry);
         }, () -> log.warn("Group {} not found for ENTRY_ADDED event", event.getGroupId()));
     }
 
