@@ -138,9 +138,7 @@ log-aggregator-showcase/
 - [x] Root `CLAUDE.md` — architecture, service map, tech stack, port map, demo flow, sub-project guidance
 - [x] `integration-tests/CLAUDE.md` — Playwright setup, agents, mock API usage
 - [x] `frontend/.claude/CLAUDE.md` — Angular/TypeScript best practices
-- [ ] Per-service `CLAUDE.md` for Spring Boot services (log-manager, edge, adapters, mock)
 - [ ] Skills for the live demo (add retry logic, create integration test, setup mock behavior)
-- [ ] Skill that feeds NOARK Swagger specs as context
 
 ### Presentation demo
 1. Run happy path test — show green results

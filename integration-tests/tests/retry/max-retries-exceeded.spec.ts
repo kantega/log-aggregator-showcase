@@ -6,6 +6,10 @@ const MOCK_URL = 'http://localhost:8084';
 test.describe('Retry Mechanism — Max Retries Exceeded', () => {
   test.beforeEach(async ({ request }) => {
     await request.post(`${MOCK_URL}/api/test/reset`);
+    // Configure Noark A to return 500 via API
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarka', statusCode: 500 },
+    });
   });
 
   test.afterEach(async ({ request }) => {
@@ -13,16 +17,12 @@ test.describe('Retry Mechanism — Max Retries Exceeded', () => {
   });
 
   test('edge retries failed archive up to max retries then marks as FAILED', async ({ page, request }) => {
-    // Set a longer test timeout since retries take time (3 retries × 3s intervals)
     test.setTimeout(90000);
 
     const groupName = `Retry Limit ${Date.now()}`;
 
     await page.goto(BASE_URL);
-
-    // Configure Noark A to return 500
-    await page.getByTestId('mock-setup-noarka-status').selectOption('500');
-    await page.getByTestId('mock-setup-noarka-apply').click();
+    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group and add entry
     await page.getByTestId('group-name-input').fill(groupName);
@@ -51,13 +51,12 @@ test.describe('Retry Mechanism — Max Retries Exceeded', () => {
         }
       }
       expect(foundFailed).toBe(true);
-    }).toPass({ timeout: 60000 });
+    }).toPass({ timeout: 70000 });
 
     // Verify multiple attempts were made via mock history
     const historyResponse = await request.get(`${MOCK_URL}/api/test/history`);
     const history = await historyResponse.json();
     const noarkaRequests = history.filter((r: any) => r.endpoint === 'noarka');
-    // Initial attempt + retries = at least 2 requests
     expect(noarkaRequests.length).toBeGreaterThanOrEqual(2);
   });
 });

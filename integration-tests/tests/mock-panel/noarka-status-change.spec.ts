@@ -15,23 +15,15 @@ test.describe('Mock Panel Controls — Noark A Status Change', () => {
     const statusSelect = page.getByTestId('mock-setup-noarka-status');
     const applyButton = page.getByTestId('mock-setup-noarka-apply');
 
-    // Set to 200
-    await statusSelect.selectOption('200');
-    await applyButton.click();
+    // Cycle through all status codes using label matching for Angular [ngValue]
+    for (const code of ['200', '400', '500', '503']) {
+      await statusSelect.selectOption({ label: code });
+      const resp = page.waitForResponse(r => r.url().includes('/api/test/setup'));
+      await applyButton.click();
+      await resp;
+    }
 
-    // Set to 400
-    await statusSelect.selectOption('400');
-    await applyButton.click();
-
-    // Set to 500
-    await statusSelect.selectOption('500');
-    await applyButton.click();
-
-    // Set to 503
-    await statusSelect.selectOption('503');
-    await applyButton.click();
-
-    // Verify the configuration via API
+    // Verify the final configuration via API
     const configResponse = await page.request.get(`${MOCK_URL}/api/test/config`);
     const config = await configResponse.json();
     expect(config.noarka.statusCode).toBe(503);

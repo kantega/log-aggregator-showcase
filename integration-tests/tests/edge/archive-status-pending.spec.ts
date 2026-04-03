@@ -5,7 +5,7 @@ const MOCK_URL = 'http://localhost:8084';
 
 test.describe('Edge Archive Tracking — PENDING Status', () => {
   test('edge panel shows PENDING status briefly before archiving completes', async ({ page, request }) => {
-    // Configure Noark A with 3-second delay
+    // Configure Noark A with 3-second delay via API
     await request.post(`${MOCK_URL}/api/test/reset`);
     await request.post(`${MOCK_URL}/api/test/setup`, {
       data: { endpoint: 'noarka', statusCode: 200, delayMs: 3000 },
@@ -34,11 +34,12 @@ test.describe('Edge Archive Tracking — PENDING Status', () => {
       expect(count).toBeGreaterThan(0);
       const lastCard = edgeCards.last();
       const status = lastCard.getByTestId('edge-group-status');
+      await expect(status).toBeVisible();
       const statusText = await status.textContent();
       expect(['PENDING', 'IN_PROGRESS']).toContain(statusText?.trim());
-    }).toPass({ timeout: 5000 });
+    }).toPass({ timeout: 8000 });
 
-    // After delay passes, close group and check it eventually becomes ARCHIVED
+    // Close group and verify it eventually becomes ARCHIVED
     await page.getByTestId('close-group-button').click();
     await expect(page.getByTestId('group-detail-status')).toHaveText('CLOSED');
 

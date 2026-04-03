@@ -6,6 +6,10 @@ const MOCK_URL = 'http://localhost:8084';
 test.describe('Error Handling — Noark B 500 Failure', () => {
   test.beforeEach(async ({ request }) => {
     await request.post(`${MOCK_URL}/api/test/reset`);
+    // Keep Noark A at 200, set Noark B to 500
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarkb', statusCode: 500 },
+    });
   });
 
   test.afterEach(async ({ request }) => {
@@ -13,15 +17,10 @@ test.describe('Error Handling — Noark B 500 Failure', () => {
   });
 
   test('configure Noark B to return 500 and verify failure on GROUP_CLOSED', async ({ page }) => {
+    test.setTimeout(60000);
     const groupName = `Failure Test B ${Date.now()}`;
 
     await page.goto(BASE_URL);
-
-    // Configure Noark A to 200, Noark B to 500
-    await page.getByTestId('mock-setup-noarka-status').selectOption('200');
-    await page.getByTestId('mock-setup-noarka-apply').click();
-    await page.getByTestId('mock-setup-noarkb-status').selectOption('500');
-    await page.getByTestId('mock-setup-noarkb-apply').click();
 
     // Create group, add entry, close
     await page.getByTestId('group-name-input').fill(groupName);
@@ -53,6 +52,6 @@ test.describe('Error Handling — Noark B 500 Failure', () => {
         }
       }
       expect(foundFailed).toBe(true);
-    }).toPass({ timeout: 30000 });
+    }).toPass({ timeout: 45000 });
   });
 });

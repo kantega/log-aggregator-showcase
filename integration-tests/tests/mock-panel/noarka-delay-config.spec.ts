@@ -8,18 +8,20 @@ test.describe('Mock Panel Controls — Noark A Delay Config', () => {
     await request.post(`${MOCK_URL}/api/test/reset`);
   });
 
-  test('configure Noark A delay and verify it takes effect', async ({ page }) => {
+  test('configure Noark A delay and verify it takes effect', async ({ page, request }) => {
     const groupName = `Delay Test Group ${Date.now()}`;
 
     await page.goto(BASE_URL);
     await expect(page.getByTestId('mock-setup-controls')).toBeVisible();
 
-    // Set 3-second delay on Noark A
+    // Set 3-second delay on Noark A via UI
     await page.getByTestId('mock-setup-noarka-delay').fill('3');
+    const applyResponse = page.waitForResponse(resp => resp.url().includes('/api/test/setup'));
     await page.getByTestId('mock-setup-noarka-apply').click();
+    await applyResponse;
 
     // Verify delay was configured via API
-    const configResponse = await page.request.get(`${MOCK_URL}/api/test/config`);
+    const configResponse = await request.get(`${MOCK_URL}/api/test/config`);
     const config = await configResponse.json();
     expect(config.noarka.delayMs).toBe(3000);
 
@@ -43,7 +45,6 @@ test.describe('Mock Panel Controls — Noark A Delay Config', () => {
       const status = lastCard.getByTestId('edge-group-status');
       if (await status.isVisible()) {
         const statusText = await status.textContent();
-        // Should be PENDING or IN_PROGRESS, not ARCHIVED yet
         expect(statusText?.trim()).not.toBe('ARCHIVED');
       }
     }

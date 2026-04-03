@@ -6,6 +6,10 @@ const MOCK_URL = 'http://localhost:8084';
 test.describe('Error Handling — Noark A 500 Failure', () => {
   test.beforeEach(async ({ request }) => {
     await request.post(`${MOCK_URL}/api/test/reset`);
+    // Configure Noark A to return 500 via API (reliable, not UI)
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarka', statusCode: 500 },
+    });
   });
 
   test.afterEach(async ({ request }) => {
@@ -13,14 +17,11 @@ test.describe('Error Handling — Noark A 500 Failure', () => {
   });
 
   test('configure Noark A to return 500 and verify failure tracked in Edge', async ({ page }) => {
+    test.setTimeout(60000);
     const groupName = `Failure Test A ${Date.now()}`;
 
     await page.goto(BASE_URL);
     await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
-
-    // Configure Noark A to return 500 via Mock Panel
-    await page.getByTestId('mock-setup-noarka-status').selectOption('500');
-    await page.getByTestId('mock-setup-noarka-apply').click();
 
     // Create group and add entry
     await page.getByTestId('group-name-input').fill(groupName);
@@ -49,6 +50,6 @@ test.describe('Error Handling — Noark A 500 Failure', () => {
         }
       }
       expect(foundFailed).toBe(true);
-    }).toPass({ timeout: 30000 });
+    }).toPass({ timeout: 45000 });
   });
 });

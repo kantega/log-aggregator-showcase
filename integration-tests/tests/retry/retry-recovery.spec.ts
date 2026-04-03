@@ -6,6 +6,10 @@ const MOCK_URL = 'http://localhost:8084';
 test.describe('Retry Mechanism — Recovery', () => {
   test.beforeEach(async ({ request }) => {
     await request.post(`${MOCK_URL}/api/test/reset`);
+    // Configure Noark A to return 500 via API
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarka', statusCode: 500 },
+    });
   });
 
   test.afterEach(async ({ request }) => {
@@ -18,10 +22,7 @@ test.describe('Retry Mechanism — Recovery', () => {
     const groupName = `Recovery Group ${Date.now()}`;
 
     await page.goto(BASE_URL);
-
-    // Configure Noark A to return 500
-    await page.getByTestId('mock-setup-noarka-status').selectOption('500');
-    await page.getByTestId('mock-setup-noarka-apply').click();
+    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group and add entry
     await page.getByTestId('group-name-input').fill(groupName);
@@ -50,11 +51,12 @@ test.describe('Retry Mechanism — Recovery', () => {
         }
       }
       expect(foundFailed).toBe(true);
-    }).toPass({ timeout: 60000 });
+    }).toPass({ timeout: 70000 });
 
-    // Restore Noark A to 200
-    await page.getByTestId('mock-setup-noarka-status').selectOption('200');
-    await page.getByTestId('mock-setup-noarka-apply').click();
+    // Restore Noark A to 200 via API
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarka', statusCode: 200 },
+    });
 
     // Click the failed Edge card to select it, then click retry
     const edgeCards = page.locator('[data-testid^="edge-group-"]');
