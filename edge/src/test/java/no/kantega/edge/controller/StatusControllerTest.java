@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -81,6 +81,35 @@ class StatusControllerTest {
         mockMvc.perform(post("/api/retry"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("retry triggered"));
+    }
+
+    @Test
+    void retryGroup_found_triggersRetry() throws Exception {
+        ArchiveGroup group = createGroup(1L, ArchiveStatus.FAILED);
+        when(repository.findByGroupId(1L)).thenReturn(Optional.of(group));
+
+        mockMvc.perform(post("/api/groups/1/retry"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("retry triggered for group 1"));
+
+        verify(archiveService).retryGroup(group);
+    }
+
+    @Test
+    void retryGroup_notFound() throws Exception {
+        when(repository.findByGroupId(99L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(post("/api/groups/99/retry"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void deleteAllGroups_clearsRepository() throws Exception {
+        mockMvc.perform(delete("/api/groups"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("all groups deleted"));
+
+        verify(repository).deleteAll();
     }
 
     private ArchiveGroup createGroup(Long groupId, ArchiveStatus status) {

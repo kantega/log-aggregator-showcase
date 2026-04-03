@@ -76,6 +76,11 @@ public class ArchiveService {
         repository.save(group);
     }
 
+    public void retryGroup(ArchiveGroup group) {
+        log.info("Manual retry triggered for group {}", group.getGroupId());
+        archiveGroup(group);
+    }
+
     public void retryFailed() {
         List<ArchiveGroup> pending = repository.findByStatus(ArchiveStatus.PENDING);
         List<ArchiveGroup> retryable = pending.stream()

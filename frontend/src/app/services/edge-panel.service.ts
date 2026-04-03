@@ -66,6 +66,6 @@ export class EdgePanelService {
   }
 
   retryGroup(groupId: number) {
-    return this.http.post('/edge-api/api/retry', {});
+    return this.http.post(`/edge-api/api/groups/${groupId}/retry`, {});
   }
 }

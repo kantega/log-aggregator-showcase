@@ -51,4 +51,20 @@ public class StatusController {
         archiveService.retryFailed();
         return ResponseEntity.ok(Map.of("status", "retry triggered"));
     }
+
+    @PostMapping("/groups/{groupId}/retry")
+    public ResponseEntity<Map<String, String>> retryGroup(@PathVariable Long groupId) {
+        Optional<ArchiveGroup> group = repository.findByGroupId(groupId);
+        if (group.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        archiveService.retryGroup(group.get());
+        return ResponseEntity.ok(Map.of("status", "retry triggered for group " + groupId));
+    }
+
+    @DeleteMapping("/groups")
+    public ResponseEntity<Map<String, String>> deleteAllGroups() {
+        repository.deleteAll();
+        return ResponseEntity.ok(Map.of("status", "all groups deleted"));
+    }
 }
