@@ -50,39 +50,11 @@ A microservice-based log management system that archives data to external NOARK-
 | `external-apis-mock/` | 8084 | Spring Boot | Controllable mock of Noark A & B with `/api/test/setup`, `/api/test/reset`, `/api/test/history` |
 | `integration-tests/` | — | Playwright (Node.js) | E2E tests with browser automation |
 
-## Key APIs
+## API Documentation
 
-### Log Manager (:8080)
-```
-POST   /api/groups              — create group { name }
-GET    /api/groups              — list all groups
-GET    /api/groups/{id}         — get group with entries
-GET    /api/groups/{id}/entries — list entries
-POST   /api/groups/{id}/entries — add entry { content }
-POST   /api/groups/{id}/close   — close/archive group
-```
-
-### Edge (:8081)
-```
-GET    /api/status              — all archive states (alias: /api/archive-state)
-GET    /api/groups              — all tracked groups
-GET    /api/groups/{id}         — single group state
-POST   /api/retry               — trigger retry of failed groups
-```
-
-### External APIs Mock (:8084)
-```
-POST   /api/test/setup          — configure mock responses (status codes, delays, error payloads)
-POST   /api/test/reset          — reset to happy-path defaults
-GET    /api/test/history        — log of all received requests
-POST   /api/noarka/**           — mock Noark A endpoints
-POST   /api/noarkb/**           — mock Noark B endpoints
-```
-
-### Adapters (:8082, :8083)
-```
-POST   /archive                 — receive archive request from Edge
-```
+All services expose auto-generated API docs via SpringDoc OpenAPI (Swagger UI). When running, access them at:
+- Each service: `http://localhost:<port>/swagger-ui.html`
+- Frontend: click "Docs" button or navigate to `http://localhost:4200/docs`
 
 ## Running the project
 

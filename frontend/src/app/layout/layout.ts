@@ -11,6 +11,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { forkJoin, catchError, of } from 'rxjs';
 
+import { RouterLink } from '@angular/router';
 import { LogGroup, LogEntry } from '../models/log-group.model';
 import { LogManagerApiService } from '../services/log-manager-api.service';
 import { RabbitmqPanelService } from '../services/rabbitmq-panel.service';
@@ -24,7 +25,7 @@ import { MockPanelComponent } from '../panels/mock-panel';
 @Component({
   selector: 'app-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, DatePipe, RabbitmqPanelComponent, EdgePanelComponent, MockPanelComponent],
+  imports: [ReactiveFormsModule, DatePipe, RouterLink, RabbitmqPanelComponent, EdgePanelComponent, MockPanelComponent],
   template: `
     <div class="flex h-screen overflow-hidden">
       <!-- Left Side: Log Manager + Edge -->
@@ -32,14 +33,23 @@ import { MockPanelComponent } from '../panels/mock-panel';
         <!-- Header -->
         <header class="px-6 py-4 border-b border-gray-200 bg-blue-50 shrink-0 flex items-center justify-between">
           <h1 class="text-xl font-semibold text-blue-800">Log Manager</h1>
-          <button
-            type="button"
-            data-testid="reset-button"
-            (click)="resetAll()"
-            class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
-          >
-            RESET
-          </button>
+          <div class="flex items-center gap-2">
+            <a
+              routerLink="/docs"
+              data-testid="docs-button"
+              class="px-3 py-1.5 bg-gray-600 text-white text-xs font-medium rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Docs
+            </a>
+            <button
+              type="button"
+              data-testid="reset-button"
+              (click)="resetAll()"
+              class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              RESET
+            </button>
+          </div>
         </header>
 
         <!-- Create Group Form -->
