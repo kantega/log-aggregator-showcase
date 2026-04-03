@@ -4,7 +4,9 @@ import no.kantega.edge.config.AdapterConfig;
 import no.kantega.edge.config.AdaptersProperties;
 import no.kantega.edge.model.ArchiveGroup;
 import no.kantega.edge.model.ArchiveGroup.ArchiveError;
+import no.kantega.edge.model.ArchiveGroup.ArchiveEvent;
 import no.kantega.edge.model.ArchiveGroup.ArchiveStatus;
+import no.kantega.edge.model.ArchiveGroup.EventStatus;
 import no.kantega.edge.model.ArchiveRequest;
 import no.kantega.edge.model.ArchiveResult;
 import no.kantega.edge.repository.ArchiveGroupRepository;
@@ -43,10 +45,12 @@ public class ArchiveService {
         for (AdapterConfig adapter : adapters) {
             ArchiveResult result = adapterClient.sendToAdapter(adapter.getUrl(), request);
             if (!result.isSuccess()) {
-                newErrors.add(new ArchiveError(adapter.getName(), result.getMessage(), Instant.now()));
+                newErrors.add(new ArchiveError(adapter.getName(), eventType, result.getMessage(), Instant.now()));
+                group.getArchiveEvents().add(new ArchiveEvent(eventType, adapter.getName(), EventStatus.FAILED, result.getMessage(), Instant.now()));
                 log.error("Adapter {} failed for group {} on {}: {}",
                         adapter.getName(), group.getGroupId(), eventType, result.getMessage());
             } else {
+                group.getArchiveEvents().add(new ArchiveEvent(eventType, adapter.getName(), EventStatus.SUCCESS, null, Instant.now()));
                 log.info("Adapter {} notified for group {} on {}", adapter.getName(), group.getGroupId(), eventType);
             }
         }

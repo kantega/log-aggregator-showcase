@@ -1,9 +1,11 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
-import { EdgePanelService, ArchiveGroup } from '../services/edge-panel.service';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { EdgePanelService, ArchiveGroup, ArchiveEvent } from '../services/edge-panel.service';
 
 @Component({
   selector: 'app-edge-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [DatePipe],
   template: `
     <div class="h-full flex flex-col overflow-hidden">
       <!-- Header -->
@@ -20,87 +22,132 @@ import { EdgePanelService, ArchiveGroup } from '../services/edge-panel.service';
       </div>
 
       <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 flex flex-col overflow-hidden">
         @if (edgeService.error()) {
-          <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-            <span class="text-amber-600 text-sm">{{ edgeService.error() }}</span>
+          <div class="p-4">
+            <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
+              <span class="text-amber-600 text-sm">{{ edgeService.error() }}</span>
+            </div>
           </div>
         } @else if (edgeService.data(); as groups) {
           @if (groups.length === 0) {
-            <p class="text-sm text-gray-400">No archive groups yet</p>
+            <p class="text-sm text-gray-400 p-4">No archive groups yet</p>
           } @else {
-            <div class="flex flex-wrap gap-3">
-              @for (group of groups; track group.groupId) {
-                <div
-                  class="w-48 border rounded-lg overflow-hidden cursor-pointer transition-all hover:shadow-md"
-                  [class.border-green-200]="group.status === 'ARCHIVED'"
-                  [class.border-yellow-200]="group.status === 'PENDING'"
-                  [class.border-orange-200]="group.status === 'IN_PROGRESS'"
-                  [class.border-red-200]="group.status === 'FAILED'"
-                  (click)="toggleExpand(group.groupId)"
-                  (keydown.enter)="toggleExpand(group.groupId)"
-                  (keydown.space)="toggleExpand(group.groupId)"
-                  [attr.data-testid]="'edge-group-' + group.groupId"
-                  tabindex="0"
-                  [attr.aria-expanded]="expandedGroupId() === group.groupId"
-                  role="button"
-                >
-                  <div class="p-3">
-                    <div class="flex items-center justify-between mb-1">
-                      <span class="text-sm font-medium text-gray-900 truncate">{{ group.name }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
+            <!-- Horizontal scrollable group cards -->
+            <div class="shrink-0 overflow-x-auto border-b border-gray-100">
+              <div class="flex gap-2 p-3 min-w-max">
+                @for (group of groups; track group.groupId) {
+                  <button
+                    type="button"
+                    (click)="selectGroup(group)"
+                    [attr.data-testid]="'edge-group-' + group.groupId"
+                    [class]="
+                      'flex-shrink-0 w-36 text-left p-2.5 rounded-lg border transition-all hover:shadow-sm ' +
+                      (selectedGroupId() === group.groupId
+                        ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300')
+                    "
+                  >
+                    <div class="text-sm font-medium text-gray-900 truncate">{{ group.name }}</div>
+                    <div class="flex items-center gap-1.5 mt-1">
                       <span
                         data-testid="edge-group-status"
-                        [class]="'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ' + statusBadgeClass(group.status)"
+                        [class]="'inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ' + statusBadgeClass(group.status)"
                       >
                         {{ group.status }}
                       </span>
                       @if (group.retryCount > 0) {
-                        <span class="text-xs text-gray-400">retry: {{ group.retryCount }}</span>
+                        <span class="text-xs text-gray-400">r:{{ group.retryCount }}</span>
                       }
                     </div>
-                    @if (group.status === 'FAILED') {
-                      <button
-                        type="button"
-                        data-testid="edge-retry-button"
-                        (click)="retry(group, $event)"
-                        class="mt-2 w-full px-2 py-1 bg-red-50 text-red-700 text-xs font-medium rounded hover:bg-red-100 transition-colors"
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Selected group detail: archive events list -->
+            @if (selectedGroup(); as group) {
+              <div class="flex-1 overflow-y-auto p-3">
+                @if (group.archiveEvents && group.archiveEvents.length > 0) {
+                  <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Archive Events ({{ group.archiveEvents.length }})
+                  </h3>
+                  <div class="space-y-1.5">
+                    @for (event of group.archiveEvents; track $index) {
+                      <div
+                        [class]="
+                          'flex items-center gap-2 p-2 rounded border ' +
+                          (event.status === 'FAILED'
+                            ? 'bg-red-50 border-red-100'
+                            : 'bg-green-50 border-green-100')
+                        "
                       >
-                        Retry
-                      </button>
+                        <span
+                          [class]="
+                            'inline-block w-1.5 h-1.5 rounded-full shrink-0 ' +
+                            (event.status === 'FAILED' ? 'bg-red-500' : 'bg-green-500')
+                          "
+                        ></span>
+                        <span
+                          [class]="
+                            'text-xs font-mono font-medium shrink-0 ' +
+                            eventTypeColor(event.eventType)
+                          "
+                        >{{ event.eventType }}</span>
+                        <span class="text-xs text-gray-600 shrink-0">{{ event.adapter }}</span>
+                        @if (event.message) {
+                          <span class="text-xs text-red-600 truncate flex-1">{{ event.message }}</span>
+                        } @else {
+                          <span class="flex-1"></span>
+                        }
+                        <span class="text-xs text-gray-400 shrink-0">{{ event.timestamp | date: 'HH:mm:ss' }}</span>
+                        @if (event.status === 'FAILED') {
+                          <button
+                            type="button"
+                            data-testid="edge-retry-button"
+                            (click)="retry(group, $event)"
+                            class="shrink-0 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded hover:bg-red-200 transition-colors"
+                          >
+                            Retry
+                          </button>
+                        }
+                      </div>
                     }
                   </div>
-
-                  <!-- Expanded detail -->
-                  @if (expandedGroupId() === group.groupId) {
-                    <div class="border-t border-gray-100 p-3 bg-gray-50">
-                      @if (group.entries.length > 0) {
-                        <p class="text-xs font-semibold text-gray-500 mb-1">Entries ({{ group.entries.length }})</p>
-                        <div class="space-y-1 mb-2">
-                          @for (entry of group.entries; track entry.entryId) {
-                            <div class="text-xs font-mono text-gray-600 truncate">{{ entry.content }}</div>
-                          }
-                        </div>
-                      }
-                      @if (group.errors.length > 0) {
-                        <p class="text-xs font-semibold text-red-500 mb-1">Errors ({{ group.errors.length }})</p>
-                        <div class="space-y-1">
-                          @for (err of group.errors; track $index) {
-                            <div class="text-xs text-red-600">
-                              <span class="font-medium">{{ err.adapter }}:</span> {{ err.message }}
-                            </div>
-                          }
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-              }
-            </div>
+                } @else if (group.errors && group.errors.length > 0) {
+                  <!-- Fallback for old data without archiveEvents -->
+                  <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Errors ({{ group.errors.length }})
+                  </h3>
+                  <div class="space-y-1.5">
+                    @for (err of group.errors; track $index) {
+                      <div class="flex items-center gap-2 p-2 bg-red-50 rounded border border-red-100">
+                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
+                        <span class="text-xs font-mono font-medium text-red-700">{{ err.eventType }}</span>
+                        <span class="text-xs text-red-600 truncate flex-1">{{ err.adapter }}: {{ err.message }}</span>
+                        <span class="text-xs text-red-400 shrink-0">{{ err.timestamp | date: 'HH:mm:ss' }}</span>
+                        <button
+                          type="button"
+                          (click)="retry(group, $event)"
+                          class="shrink-0 px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded hover:bg-red-200 transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="text-sm text-gray-400">No archive events recorded for this group</p>
+                }
+              </div>
+            } @else {
+              <div class="flex-1 flex items-center justify-center">
+                <p class="text-xs text-gray-400">Select a group to view details</p>
+              </div>
+            }
           }
         } @else {
-          <p class="text-sm text-gray-400">Connecting...</p>
+          <p class="text-sm text-gray-400 p-4">Connecting...</p>
         }
       </div>
     </div>
@@ -108,10 +155,17 @@ import { EdgePanelService, ArchiveGroup } from '../services/edge-panel.service';
 })
 export class EdgePanelComponent {
   protected readonly edgeService = inject(EdgePanelService);
-  readonly expandedGroupId = signal<number | null>(null);
+  readonly selectedGroupId = signal<number | null>(null);
 
-  toggleExpand(groupId: number): void {
-    this.expandedGroupId.update((current) => (current === groupId ? null : groupId));
+  readonly selectedGroup = computed(() => {
+    const id = this.selectedGroupId();
+    const groups = this.edgeService.data();
+    if (!id || !groups) return null;
+    return groups.find((g) => g.groupId === id) ?? null;
+  });
+
+  selectGroup(group: ArchiveGroup): void {
+    this.selectedGroupId.set(group.groupId);
   }
 
   retry(group: ArchiveGroup, event: Event): void {
@@ -131,6 +185,19 @@ export class EdgePanelComponent {
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  eventTypeColor(eventType: string): string {
+    switch (eventType) {
+      case 'GROUP_CREATED':
+        return 'text-blue-700';
+      case 'ENTRY_ADDED':
+        return 'text-gray-700';
+      case 'GROUP_CLOSED':
+        return 'text-purple-700';
+      default:
+        return 'text-gray-700';
     }
   }
 }

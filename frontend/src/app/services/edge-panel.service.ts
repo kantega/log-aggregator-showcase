@@ -11,7 +11,16 @@ export interface ArchiveEntry {
 
 export interface ArchiveError {
   adapter: string;
+  eventType: string;
   message: string;
+  timestamp: string;
+}
+
+export interface ArchiveEvent {
+  eventType: string;
+  adapter: string;
+  status: 'SUCCESS' | 'FAILED';
+  message: string | null;
   timestamp: string;
 }
 
@@ -22,6 +31,7 @@ export interface ArchiveGroup {
   status: 'PENDING' | 'IN_PROGRESS' | 'ARCHIVED' | 'FAILED';
   entries: ArchiveEntry[];
   errors: ArchiveError[];
+  archiveEvents: ArchiveEvent[];
   retryCount: number;
   createdAt: string;
   updatedAt: string;

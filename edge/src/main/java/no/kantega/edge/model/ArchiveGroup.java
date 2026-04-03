@@ -23,6 +23,7 @@ public class ArchiveGroup {
     private ArchiveStatus status;
     private List<LogEntryData> entries = new ArrayList<>();
     private List<ArchiveError> errors = new ArrayList<>();
+    private List<ArchiveEvent> archiveEvents = new ArrayList<>();
     private int retryCount = 0;
     private Instant createdAt;
     private Instant updatedAt;
@@ -45,7 +46,23 @@ public class ArchiveGroup {
     @AllArgsConstructor
     public static class ArchiveError {
         private String adapter;
+        private String eventType;
         private String message;
         private Instant timestamp;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ArchiveEvent {
+        private String eventType;
+        private String adapter;
+        private EventStatus status;
+        private String message;
+        private Instant timestamp;
+    }
+
+    public enum EventStatus {
+        SUCCESS, FAILED
     }
 }
