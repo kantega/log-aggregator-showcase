@@ -5,10 +5,9 @@ import {
   OnDestroy,
   inject,
   signal,
-  computed,
 } from '@angular/core';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
-import { DatePipe, JsonPipe, KeyValuePipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 
 import { LogGroup, LogEntry } from '../models/log-group.model';
 import { LogManagerApiService } from '../services/log-manager-api.service';
@@ -16,17 +15,29 @@ import { RabbitmqPanelService } from '../services/rabbitmq-panel.service';
 import { EdgePanelService } from '../services/edge-panel.service';
 import { MockPanelService } from '../services/mock-panel.service';
 
+import { RabbitmqPanelComponent } from '../panels/rabbitmq-panel';
+import { EdgePanelComponent } from '../panels/edge-panel';
+import { MockPanelComponent } from '../panels/mock-panel';
+
 @Component({
   selector: 'app-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, DatePipe, JsonPipe, KeyValuePipe],
+  imports: [ReactiveFormsModule, DatePipe, RabbitmqPanelComponent, EdgePanelComponent, MockPanelComponent],
   template: `
     <div class="flex h-screen overflow-hidden">
-      <!-- Left Side: Log Manager -->
+      <!-- Left Side: Log Manager + Edge -->
       <div class="w-[55%] flex flex-col border-r border-gray-200 bg-white overflow-hidden">
         <!-- Header -->
-        <header class="px-6 py-4 border-b border-gray-200 shrink-0">
-          <h1 class="text-xl font-semibold text-gray-900">Log Manager</h1>
+        <header class="px-6 py-4 border-b border-gray-200 bg-blue-50 shrink-0 flex items-center justify-between">
+          <h1 class="text-xl font-semibold text-blue-800">Log Manager</h1>
+          <button
+            type="button"
+            data-testid="reset-button"
+            (click)="resetAll()"
+            class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700 transition-colors"
+          >
+            RESET
+          </button>
         </header>
 
         <!-- Create Group Form -->
@@ -53,7 +64,7 @@ import { MockPanelService } from '../services/mock-panel.service';
         </div>
 
         <!-- Content area: groups list + detail -->
-        <div class="flex-1 flex overflow-hidden">
+        <div class="flex-[1] flex overflow-hidden min-h-0">
           <!-- Groups List -->
           <div class="w-1/3 border-r border-gray-200 overflow-y-auto">
             <div class="p-3">
@@ -184,137 +195,55 @@ import { MockPanelService } from '../services/mock-panel.service';
             }
           </div>
         </div>
+
+        <!-- Edge Panel (lower-left, ~35% of remaining height) -->
+        <div class="flex-[1] border-t border-gray-200 min-h-0">
+          <app-edge-panel />
+        </div>
       </div>
 
-      <!-- Right Side: Polling Panels -->
+      <!-- Right Side: RabbitMQ (20%) + Mock (80%) -->
       <div class="w-[45%] flex flex-col overflow-hidden bg-gray-50">
-        <!-- RabbitMQ Panel -->
-        <div class="flex-1 border-b border-gray-200 flex flex-col overflow-hidden">
-          <div class="px-5 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-2">
-            <span
-              data-testid="rabbitmq-status"
-              [class]="
-                'inline-block w-2 h-2 rounded-full ' +
-                (rabbitmqService.error() ? 'bg-red-500' : 'bg-green-500')
-              "
-              [attr.aria-label]="rabbitmqService.error() ? 'Disconnected' : 'Connected'"
-              role="status"
-            ></span>
-            <h2 class="text-sm font-semibold text-gray-700">RabbitMQ Queue</h2>
-          </div>
-          <div class="flex-1 overflow-y-auto p-5">
-            @if (rabbitmqService.error()) {
-              <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <span class="text-amber-600 text-sm">{{ rabbitmqService.error() }}</span>
-              </div>
-            } @else if (rabbitmqService.data(); as data) {
-              <div class="grid grid-cols-2 gap-3">
-                <div class="p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Messages</p>
-                  <p data-testid="rabbitmq-messages" class="text-2xl font-semibold text-gray-900 mt-1">{{ data.messages }}</p>
-                </div>
-                <div class="p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Ready</p>
-                  <p class="text-2xl font-semibold text-gray-900 mt-1">{{ data.messagesReady }}</p>
-                </div>
-                <div class="p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Unacked</p>
-                  <p class="text-2xl font-semibold text-gray-900 mt-1">{{ data.messagesUnacknowledged }}</p>
-                </div>
-                <div class="p-3 bg-white rounded-lg border border-gray-100 shadow-sm">
-                  <p class="text-xs text-gray-500 uppercase tracking-wider">Consumers</p>
-                  <p class="text-2xl font-semibold text-gray-900 mt-1">{{ data.consumers }}</p>
-                </div>
-              </div>
-            } @else {
-              <p class="text-sm text-gray-400">Connecting...</p>
-            }
-          </div>
+        <!-- RabbitMQ Panel (~30%) -->
+        <div class="flex-[3] border-b border-gray-200 min-h-0">
+          <app-rabbitmq-panel />
         </div>
 
-        <!-- Edge Panel -->
-        <div class="flex-1 border-b border-gray-200 flex flex-col overflow-hidden">
-          <div class="px-5 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-2">
-            <span
-              [class]="
-                'inline-block w-2 h-2 rounded-full ' +
-                (edgeService.error() ? 'bg-red-500' : 'bg-green-500')
-              "
-              [attr.aria-label]="edgeService.error() ? 'Disconnected' : 'Connected'"
-              role="status"
-            ></span>
-            <h2 class="text-sm font-semibold text-gray-700">Edge (MongoDB)</h2>
-          </div>
-          <div class="flex-1 overflow-y-auto p-5">
-            @if (edgeService.error()) {
-              <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <span class="text-amber-600 text-sm">{{ edgeService.error() }}</span>
-              </div>
-            } @else if (edgeService.data(); as data) {
-              <div class="space-y-2">
-                @for (item of data | keyvalue; track item.key) {
-                  <div class="flex justify-between items-center p-2 bg-white rounded border border-gray-100">
-                    <span class="text-xs font-medium text-gray-500">{{ item.key }}</span>
-                    <span class="text-sm font-mono text-gray-800">{{ item.value }}</span>
-                  </div>
-                }
-              </div>
-            } @else {
-              <p class="text-sm text-gray-400">Connecting...</p>
-            }
-          </div>
-        </div>
-
-        <!-- Mock Panel -->
-        <div class="flex-1 flex flex-col overflow-hidden">
-          <div class="px-5 py-3 border-b border-gray-200 bg-white shrink-0 flex items-center gap-2">
-            <span
-              [class]="
-                'inline-block w-2 h-2 rounded-full ' +
-                (mockService.error() ? 'bg-red-500' : 'bg-green-500')
-              "
-              [attr.aria-label]="mockService.error() ? 'Disconnected' : 'Connected'"
-              role="status"
-            ></span>
-            <h2 class="text-sm font-semibold text-gray-700">External APIs Mock</h2>
-          </div>
-          <div class="flex-1 overflow-y-auto p-5">
-            @if (mockService.error()) {
-              <div class="flex items-center gap-2 p-3 bg-amber-50 rounded-lg border border-amber-200">
-                <span class="text-amber-600 text-sm">{{ mockService.error() }}</span>
-              </div>
-            } @else if (mockService.data(); as data) {
-              @if (data.length === 0) {
-                <p class="text-sm text-gray-400">No requests recorded yet</p>
-              } @else {
-                <div class="space-y-2">
-                  @for (entry of data; track $index) {
-                    <div class="p-2 bg-white rounded border border-gray-100">
-                      <pre class="text-xs font-mono text-gray-700 whitespace-pre-wrap overflow-hidden">{{ entry | json }}</pre>
-                    </div>
-                  }
-                </div>
-              }
-            } @else {
-              <p class="text-sm text-gray-400">Connecting...</p>
-            }
-          </div>
+        <!-- Mock Panel (~70%) -->
+        <div class="flex-[7] min-h-0">
+          <app-mock-panel />
         </div>
       </div>
     </div>
+
+    <!-- Toast notification -->
+    @if (toastMessage()) {
+      <div
+        data-testid="toast"
+        [class]="
+          'fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity ' +
+          (toastType() === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white')
+        "
+        role="alert"
+      >
+        {{ toastMessage() }}
+      </div>
+    }
   `,
 })
 export class LayoutComponent implements OnInit, OnDestroy {
   private readonly api = inject(LogManagerApiService);
-  protected readonly rabbitmqService = inject(RabbitmqPanelService);
-  protected readonly edgeService = inject(EdgePanelService);
-  protected readonly mockService = inject(MockPanelService);
+  private readonly rabbitmqService = inject(RabbitmqPanelService);
+  private readonly edgeService = inject(EdgePanelService);
+  private readonly mockService = inject(MockPanelService);
 
   readonly groups = signal<LogGroup[]>([]);
   readonly selectedGroup = signal<LogGroup | null>(null);
   readonly entries = signal<LogEntry[]>([]);
   readonly loadingGroups = signal(false);
   readonly loadingEntries = signal(false);
+  readonly toastMessage = signal<string | null>(null);
+  readonly toastType = signal<'success' | 'error'>('success');
 
   readonly groupNameControl = new FormControl('', { nonNullable: true, validators: [Validators.required] });
   readonly entryContentControl = new FormControl('', { nonNullable: true, validators: [Validators.required] });
@@ -342,9 +271,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
         this.groupNameControl.reset();
         this.loadGroups();
       },
-      error: () => {
-        // Silently handle — groups list won't refresh
-      },
     });
   }
 
@@ -366,9 +292,6 @@ export class LayoutComponent implements OnInit, OnDestroy {
         this.entryContentControl.reset();
         this.loadEntries(group.id);
       },
-      error: () => {
-        // Silently handle
-      },
     });
   }
 
@@ -381,10 +304,20 @@ export class LayoutComponent implements OnInit, OnDestroy {
         this.selectedGroup.set(updated);
         this.loadGroups();
       },
-      error: () => {
-        // Silently handle
-      },
     });
+  }
+
+  resetAll(): void {
+    if (!confirm('Reset all services? This clears all data.')) return;
+
+    // TODO: implement parallel reset calls in Step 6
+    this.showToast('Reset not yet implemented', 'error');
+  }
+
+  private showToast(message: string, type: 'success' | 'error'): void {
+    this.toastMessage.set(message);
+    this.toastType.set(type);
+    setTimeout(() => this.toastMessage.set(null), 3000);
   }
 
   private loadGroups(): void {

@@ -3,8 +3,28 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription, interval, switchMap, catchError, of } from 'rxjs';
 
-export interface ArchiveState {
-  [key: string]: unknown;
+export interface ArchiveEntry {
+  entryId: number;
+  content: string;
+  timestamp: string;
+}
+
+export interface ArchiveError {
+  adapter: string;
+  message: string;
+  timestamp: string;
+}
+
+export interface ArchiveGroup {
+  id: string;
+  groupId: number;
+  name: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'ARCHIVED' | 'FAILED';
+  entries: ArchiveEntry[];
+  errors: ArchiveError[];
+  retryCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -12,7 +32,7 @@ export class EdgePanelService {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly data = signal<ArchiveState | null>(null);
+  readonly data = signal<ArchiveGroup[] | null>(null);
   readonly error = signal<string | null>(null);
 
   private subscription: Subscription | null = null;
@@ -25,7 +45,7 @@ export class EdgePanelService {
     this.subscription = interval(3000)
       .pipe(
         switchMap(() =>
-          this.http.get<ArchiveState>('/edge-api/api/archive-state').pipe(catchError(() => of(null))),
+          this.http.get<ArchiveGroup[]>('/edge-api/api/groups').pipe(catchError(() => of(null))),
         ),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -43,5 +63,9 @@ export class EdgePanelService {
   stopPolling(): void {
     this.subscription?.unsubscribe();
     this.subscription = null;
+  }
+
+  retryGroup(groupId: number) {
+    return this.http.post('/edge-api/api/retry', {});
   }
 }
