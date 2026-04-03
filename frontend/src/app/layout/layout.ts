@@ -7,7 +7,9 @@ import {
   signal,
 } from '@angular/core';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
+import { forkJoin, catchError, of } from 'rxjs';
 
 import { LogGroup, LogEntry } from '../models/log-group.model';
 import { LogManagerApiService } from '../services/log-manager-api.service';
@@ -232,6 +234,7 @@ import { MockPanelComponent } from '../panels/mock-panel';
   `,
 })
 export class LayoutComponent implements OnInit, OnDestroy {
+  private readonly http = inject(HttpClient);
   private readonly api = inject(LogManagerApiService);
   private readonly rabbitmqService = inject(RabbitmqPanelService);
   private readonly edgeService = inject(EdgePanelService);
@@ -310,8 +313,22 @@ export class LayoutComponent implements OnInit, OnDestroy {
   resetAll(): void {
     if (!confirm('Reset all services? This clears all data.')) return;
 
-    // TODO: implement parallel reset calls in Step 6
-    this.showToast('Reset not yet implemented', 'error');
+    const rabbitHeaders = new HttpHeaders({
+      Authorization: `Basic ${btoa('myuser:secret')}`,
+    });
+
+    forkJoin({
+      logManager: this.api.deleteAll().pipe(catchError(() => of(null))),
+      edge: this.edgeService.deleteAll().pipe(catchError(() => of(null))),
+      mock: this.http.post('/mock-api/api/test/reset', {}).pipe(catchError(() => of(null))),
+      rabbit: this.http.delete('/rabbitmq-api/api/queues/%2F/log-events-queue/contents', { headers: rabbitHeaders }).pipe(catchError(() => of(null))),
+    }).subscribe(() => {
+      this.groups.set([]);
+      this.selectedGroup.set(null);
+      this.entries.set([]);
+      this.rabbitmqService.clearMessages();
+      this.showToast('Reset complete', 'success');
+    });
   }
 
   private showToast(message: string, type: 'success' | 'error'): void {

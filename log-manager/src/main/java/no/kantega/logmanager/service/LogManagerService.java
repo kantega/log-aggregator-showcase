@@ -63,6 +63,11 @@ public class LogManagerService {
         return entry;
     }
 
+    public void deleteAllGroups() {
+        logEntryRepository.deleteAll();
+        logGroupRepository.deleteAll();
+    }
+
     public LogGroup closeGroup(Long id) {
         LogGroup group = getGroup(id);
         if ("CLOSED".equals(group.getStatus())) {

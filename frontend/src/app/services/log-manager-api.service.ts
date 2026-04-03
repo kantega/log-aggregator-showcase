@@ -32,4 +32,8 @@ export class LogManagerApiService {
   closeGroup(id: number): Observable<LogGroup> {
     return this.http.post<LogGroup>(`${this.baseUrl}/${id}/close`, {});
   }
+
+  deleteAll(): Observable<unknown> {
+    return this.http.delete(this.baseUrl);
+  }
 }

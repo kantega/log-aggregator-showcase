@@ -78,4 +78,8 @@ export class EdgePanelService {
   retryGroup(groupId: number) {
     return this.http.post(`/edge-api/api/groups/${groupId}/retry`, {});
   }
+
+  deleteAll() {
+    return this.http.delete('/edge-api/api/groups');
+  }
 }

@@ -17,7 +17,9 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -95,6 +97,15 @@ class LogGroupControllerTest {
                         .content(objectMapper.writeValueAsString(Map.of("content", "Test entry"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.content").value("Test entry"));
+    }
+
+    @Test
+    void deleteAllGroups_returns200() throws Exception {
+        mockMvc.perform(delete("/api/groups"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("all groups deleted"));
+
+        verify(logManagerService).deleteAllGroups();
     }
 
     @Test

@@ -47,6 +47,12 @@ public class LogGroupController {
         return ResponseEntity.status(HttpStatus.CREATED).body(entry);
     }
 
+    @DeleteMapping
+    public ResponseEntity<Map<String, String>> deleteAllGroups() {
+        logManagerService.deleteAllGroups();
+        return ResponseEntity.ok(Map.of("status", "all groups deleted"));
+    }
+
     @PostMapping("/{id}/close")
     public ResponseEntity<LogGroup> closeGroup(@PathVariable Long id) {
         return ResponseEntity.ok(logManagerService.closeGroup(id));
