@@ -53,6 +53,32 @@ class TestControllerTest {
     }
 
     @Test
+    void config_returnsDefaultConfigs() throws Exception {
+        mockService.reset();
+
+        mockMvc.perform(get("/api/test/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.noarka.statusCode").value(200))
+                .andExpect(jsonPath("$.noarka.delayMs").value(0))
+                .andExpect(jsonPath("$.noarkb.statusCode").value(200))
+                .andExpect(jsonPath("$.noarkb.delayMs").value(0));
+    }
+
+    @Test
+    void config_returnsCustomConfigAfterSetup() throws Exception {
+        mockMvc.perform(post("/api/test/setup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"endpoint\":\"noarka\",\"statusCode\":500,\"delayMs\":100}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/test/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.noarka.statusCode").value(500))
+                .andExpect(jsonPath("$.noarka.delayMs").value(100))
+                .andExpect(jsonPath("$.noarkb.statusCode").value(200));
+    }
+
+    @Test
     void history_returnsRecordedRequests() throws Exception {
         mockService.reset();
         mockService.recordRequest("noarka", "POST", "/api/noarka/archive", "{\"data\":1}");

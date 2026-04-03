@@ -1,11 +1,12 @@
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
 import { DatePipe, JsonPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MockPanelService, MockHistoryEntry } from '../services/mock-panel.service';
 
 @Component({
   selector: 'app-mock-panel',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, JsonPipe],
+  imports: [DatePipe, JsonPipe, FormsModule],
   template: `
     <div class="h-full flex flex-col overflow-hidden">
       <!-- Header -->
@@ -28,20 +29,96 @@ import { MockPanelService, MockHistoryEntry } from '../services/mock-panel.servi
             <span class="text-amber-600 text-sm">{{ mockService.error() }}</span>
           </div>
         } @else if (mockService.data(); as data) {
-          <!-- Setup Controls placeholder -->
-          <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+          <!-- Setup Controls -->
+          <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200" data-testid="mock-setup-controls">
             <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Mock Setup</h3>
             <div class="space-y-2">
-              <div class="flex items-center gap-3">
-                <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-                <span class="text-sm text-gray-700 w-16">Noark A</span>
-                <span class="text-xs font-mono text-green-700 bg-green-50 px-2 py-0.5 rounded">200 OK</span>
-                <span class="text-xs text-gray-400 ml-auto">Controls coming in Step 4</span>
+              <!-- Noark A -->
+              <div class="flex items-center gap-2" data-testid="mock-setup-noarka">
+                <span
+                  [class]="'inline-block w-2 h-2 rounded-full ' + statusDotClass('noarka')"
+                  role="status"
+                  [attr.aria-label]="'Noark A status: ' + noarkAStatus()"
+                ></span>
+                <span class="text-sm text-gray-700 w-14 shrink-0">Noark A</span>
+                <select
+                  class="text-xs font-mono border border-gray-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  [ngModel]="noarkAStatus()"
+                  (ngModelChange)="noarkAStatus.set($event)"
+                  data-testid="mock-setup-noarka-status"
+                  aria-label="Noark A status code"
+                >
+                  @for (code of statusCodes; track code) {
+                    <option [ngValue]="code">{{ code }}</option>
+                  }
+                </select>
+                <input
+                  type="number"
+                  class="text-xs font-mono border border-gray-200 rounded px-1.5 py-1 w-16 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  [ngModel]="noarkADelay()"
+                  (ngModelChange)="noarkADelay.set(+$event)"
+                  data-testid="mock-setup-noarka-delay"
+                  aria-label="Noark A delay in seconds"
+                  min="0"
+                  step="0.5"
+                  placeholder="s"
+                />
+                <span class="text-xs text-gray-400">s</span>
+                <button
+                  class="text-xs font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                  (click)="applySetup('noarka', noarkAStatus(), noarkADelay())"
+                  data-testid="mock-setup-noarka-apply"
+                >Apply</button>
+                <span [class]="'text-xs font-mono px-2 py-0.5 rounded ' + statusBadgeClass('noarka')">
+                  {{ currentStatusLabel('noarka') }}
+                </span>
+                @if (currentDelay('noarka') > 0) {
+                  <span class="text-xs text-gray-400">+{{ currentDelay('noarka') }}s</span>
+                }
               </div>
-              <div class="flex items-center gap-3">
-                <span class="inline-block w-2 h-2 rounded-full bg-green-500"></span>
-                <span class="text-sm text-gray-700 w-16">Noark B</span>
-                <span class="text-xs font-mono text-green-700 bg-green-50 px-2 py-0.5 rounded">200 OK</span>
+
+              <!-- Noark B -->
+              <div class="flex items-center gap-2" data-testid="mock-setup-noarkb">
+                <span
+                  [class]="'inline-block w-2 h-2 rounded-full ' + statusDotClass('noarkb')"
+                  role="status"
+                  [attr.aria-label]="'Noark B status: ' + noarkBStatus()"
+                ></span>
+                <span class="text-sm text-gray-700 w-14 shrink-0">Noark B</span>
+                <select
+                  class="text-xs font-mono border border-gray-200 rounded px-1.5 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  [ngModel]="noarkBStatus()"
+                  (ngModelChange)="noarkBStatus.set($event)"
+                  data-testid="mock-setup-noarkb-status"
+                  aria-label="Noark B status code"
+                >
+                  @for (code of statusCodes; track code) {
+                    <option [ngValue]="code">{{ code }}</option>
+                  }
+                </select>
+                <input
+                  type="number"
+                  class="text-xs font-mono border border-gray-200 rounded px-1.5 py-1 w-16 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  [ngModel]="noarkBDelay()"
+                  (ngModelChange)="noarkBDelay.set(+$event)"
+                  data-testid="mock-setup-noarkb-delay"
+                  aria-label="Noark B delay in seconds"
+                  min="0"
+                  step="0.5"
+                  placeholder="s"
+                />
+                <span class="text-xs text-gray-400">s</span>
+                <button
+                  class="text-xs font-medium px-2 py-1 rounded bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                  (click)="applySetup('noarkb', noarkBStatus(), noarkBDelay())"
+                  data-testid="mock-setup-noarkb-apply"
+                >Apply</button>
+                <span [class]="'text-xs font-mono px-2 py-0.5 rounded ' + statusBadgeClass('noarkb')">
+                  {{ currentStatusLabel('noarkb') }}
+                </span>
+                @if (currentDelay('noarkb') > 0) {
+                  <span class="text-xs text-gray-400">+{{ currentDelay('noarkb') }}s</span>
+                }
               </div>
             </div>
           </div>
@@ -126,6 +203,33 @@ import { MockPanelService, MockHistoryEntry } from '../services/mock-panel.servi
 export class MockPanelComponent {
   protected readonly mockService = inject(MockPanelService);
   readonly expandedRequest = signal<string | null>(null);
+  readonly statusCodes = [200, 400, 500, 503];
+
+  // Form state signals
+  readonly noarkAStatus = signal(200);
+  readonly noarkADelay = signal(0);
+  readonly noarkBStatus = signal(200);
+  readonly noarkBDelay = signal(0);
+
+  private configSynced = false;
+
+  constructor() {
+    // Sync form state from server config when it first arrives
+    effect(() => {
+      const config = this.mockService.config();
+      if (config && !this.configSynced) {
+        this.configSynced = true;
+        if (config['noarka']) {
+          this.noarkAStatus.set(config['noarka'].statusCode);
+          this.noarkADelay.set(config['noarka'].delayMs / 1000);
+        }
+        if (config['noarkb']) {
+          this.noarkBStatus.set(config['noarkb'].statusCode);
+          this.noarkBDelay.set(config['noarkb'].delayMs / 1000);
+        }
+      }
+    });
+  }
 
   readonly noarkARequests = computed(() => {
     const data = this.mockService.data();
@@ -147,5 +251,39 @@ export class MockPanelComponent {
 
   toggleRequestExpand(key: string): void {
     this.expandedRequest.update((current) => (current === key ? null : key));
+  }
+
+  applySetup(endpoint: string, statusCode: number, delaySec: number): void {
+    this.mockService.setup(endpoint, Number(statusCode), Math.round(Number(delaySec) * 1000));
+  }
+
+  statusDotClass(endpoint: string): string {
+    const config = this.mockService.config();
+    const code = config?.[endpoint]?.statusCode ?? 200;
+    return code >= 200 && code < 300 ? 'bg-green-500' : 'bg-red-500';
+  }
+
+  statusBadgeClass(endpoint: string): string {
+    const config = this.mockService.config();
+    const code = config?.[endpoint]?.statusCode ?? 200;
+    return code >= 200 && code < 300
+      ? 'text-green-700 bg-green-50'
+      : 'text-red-700 bg-red-50';
+  }
+
+  currentDelay(endpoint: string): number {
+    const config = this.mockService.config();
+    const delayMs = config?.[endpoint]?.delayMs ?? 0;
+    return delayMs / 1000;
+  }
+
+  currentStatusLabel(endpoint: string): string {
+    const config = this.mockService.config();
+    const code = config?.[endpoint]?.statusCode ?? 200;
+    if (code === 200) return '200 OK';
+    if (code === 400) return '400 Bad Request';
+    if (code === 500) return '500 Error';
+    if (code === 503) return '503 Unavailable';
+    return `${code}`;
   }
 }

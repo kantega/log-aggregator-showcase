@@ -19,7 +19,7 @@ public class RetryScheduler {
         this.archiveService = archiveService;
     }
 
-    @Scheduled(fixedDelay = 3000) // every 60 seconds
+    @Scheduled(fixedDelay = 3000) // every 3 seconds
     public void retryPending() {
         log.debug("Running scheduled retry check");
         archiveService.retryFailed();

@@ -6,6 +6,7 @@ import no.kantega.externalapismock.service.MockService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import no.kantega.externalapismock.model.MockConfig;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +30,11 @@ public class TestController {
     public ResponseEntity<Map<String, String>> reset() {
         mockService.reset();
         return ResponseEntity.ok(Map.of("status", "reset"));
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<Map<String, MockConfig>> config() {
+        return ResponseEntity.ok(mockService.getAllConfigs());
     }
 
     @GetMapping("/history")
