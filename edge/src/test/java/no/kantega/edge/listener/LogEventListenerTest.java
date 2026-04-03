@@ -46,7 +46,7 @@ class LogEventListenerTest {
     }
 
     @Test
-    void handleEvent_entryAdded_addsToExistingGroup() {
+    void handleEvent_entryAdded_addsToExistingGroupAndNotifiesAdapters() {
         ArchiveGroup group = new ArchiveGroup();
         group.setGroupId(1L);
         group.setEntries(new java.util.ArrayList<>());
@@ -59,6 +59,7 @@ class LogEventListenerTest {
         assertThat(group.getEntries()).hasSize(1);
         assertThat(group.getEntries().get(0).getContent()).isEqualTo("log content");
         assertThat(group.getEntries().get(0).getEntryId()).isEqualTo(10L);
+        verify(archiveService).notifyAdapters(group, "ENTRY_ADDED");
     }
 
     @Test
@@ -80,7 +81,7 @@ class LogEventListenerTest {
         LogEvent event = new LogEvent("GROUP_CLOSED", 1L, null, null, null, "2024-01-01T00:00:00Z");
         listener.handleEvent(event);
 
-        verify(archiveService).archiveGroup(group);
+        verify(archiveService).notifyAdapters(group, "GROUP_CLOSED");
     }
 
     @Test
@@ -90,7 +91,7 @@ class LogEventListenerTest {
         LogEvent event = new LogEvent("GROUP_CLOSED", 99L, null, null, null, "2024-01-01T00:00:00Z");
         listener.handleEvent(event);
 
-        verify(archiveService, never()).archiveGroup(any());
+        verify(archiveService, never()).notifyAdapters(any(), any());
     }
 
     @Test

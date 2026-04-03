@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,7 +30,7 @@ class ArchiveServiceTest {
 
     @Test
     void archive_success() {
-        ArchiveRequest request = new ArchiveRequest(1L, "Group", List.of());
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of());
         when(transformService.transform(request)).thenReturn(new NoarkAPayload());
         when(noarkAClient.postArchive(any())).thenReturn("{\"status\":\"ok\"}");
 
@@ -41,7 +42,7 @@ class ArchiveServiceTest {
 
     @Test
     void archive_failureFromClient() {
-        ArchiveRequest request = new ArchiveRequest(1L, "Group", List.of());
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of());
         when(transformService.transform(request)).thenReturn(new NoarkAPayload());
         when(noarkAClient.postArchive(any())).thenThrow(new RuntimeException("Connection refused"));
 
@@ -53,8 +54,36 @@ class ArchiveServiceTest {
     }
 
     @Test
+    void archive_entryAdded_archivesEntry() {
+        ArchiveRequest request = new ArchiveRequest("ENTRY_ADDED", 1L, "Group",
+                List.of(new ArchiveRequest.LogEntry(10L, "content", "2026-04-03T12:00:00")));
+        when(transformService.transform(request)).thenReturn(new NoarkAPayload());
+        when(noarkAClient.postArchive(any())).thenReturn("{\"status\":\"ok\"}");
+
+        ArchiveResult result = archiveService.archive(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(transformService).transform(request);
+        verify(noarkAClient).postArchive(any());
+    }
+
+    @Test
+    void archive_groupClosed_archivesGroup() {
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group",
+                List.of(new ArchiveRequest.LogEntry(10L, "content", "2026-04-03T12:00:00")));
+        when(transformService.transform(request)).thenReturn(new NoarkAPayload());
+        when(noarkAClient.postArchive(any())).thenReturn("{\"status\":\"ok\"}");
+
+        ArchiveResult result = archiveService.archive(request);
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(transformService).transform(request);
+        verify(noarkAClient).postArchive(any());
+    }
+
+    @Test
     void archive_failureFromTransform() {
-        ArchiveRequest request = new ArchiveRequest(1L, "Group", List.of());
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of());
         when(transformService.transform(request)).thenThrow(new RuntimeException("Transform error"));
 
         ArchiveResult result = archiveService.archive(request);

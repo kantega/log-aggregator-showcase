@@ -8,9 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -40,14 +38,6 @@ public class ArchiveGroup {
         private Long entryId;
         private String content;
         private String timestamp;
-        private Map<String, ArchiveStatus> adapterStatuses = new HashMap<>();
-
-        public LogEntryData(Long entryId, String content, String timestamp) {
-            this.entryId = entryId;
-            this.content = content;
-            this.timestamp = timestamp;
-            this.adapterStatuses = new HashMap<>();
-        }
     }
 
     @Data

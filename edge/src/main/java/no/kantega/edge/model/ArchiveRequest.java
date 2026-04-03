@@ -10,6 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ArchiveRequest {
+    private String eventType;
     private Long groupId;
     private String groupName;
     private List<LogEntry> entries;

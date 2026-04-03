@@ -10,10 +10,4 @@ import lombok.NoArgsConstructor;
 public class AdapterConfig {
     private String name;
     private String url;
-    private TriggerType trigger;
-
-    public enum TriggerType {
-        ON_ENTRY,
-        ON_GROUP_CLOSE
-    }
 }

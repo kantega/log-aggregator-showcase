@@ -14,7 +14,7 @@ class TransformServiceTest {
 
     @Test
     void transform_mapsGroupFields() {
-        ArchiveRequest request = new ArchiveRequest(1L, "Test Group", List.of(
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Test Group", List.of(
                 new ArchiveRequest.LogEntry(10L, "entry content", "2024-01-01T00:00:00Z")
         ));
 
@@ -27,7 +27,7 @@ class TransformServiceTest {
 
     @Test
     void transform_mapsEntriesToDocuments() {
-        ArchiveRequest request = new ArchiveRequest(1L, "Group", List.of(
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of(
                 new ArchiveRequest.LogEntry(10L, "first", "2024-01-01T00:00:00Z"),
                 new ArchiveRequest.LogEntry(20L, "second", "2024-01-02T00:00:00Z")
         ));
@@ -43,7 +43,7 @@ class TransformServiceTest {
 
     @Test
     void transform_emptyEntries() {
-        ArchiveRequest request = new ArchiveRequest(1L, "Empty Group", List.of());
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Empty Group", List.of());
         NoarkAPayload payload = transformService.transform(request);
 
         assertThat(payload.getDocuments()).isEmpty();

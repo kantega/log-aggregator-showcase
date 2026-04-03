@@ -55,21 +55,20 @@ public class LogEventListener {
 
     private void handleEntryAdded(LogEvent event) {
         repository.findByGroupId(event.getGroupId()).ifPresentOrElse(group -> {
-            LogEntryData entry = new LogEntryData(
-                    event.getEntryId(), event.getContent(), event.getTimestamp());
-            group.getEntries().add(entry);
+            group.getEntries().add(new LogEntryData(
+                    event.getEntryId(), event.getContent(), event.getTimestamp()));
             group.setUpdatedAt(Instant.now());
             repository.save(group);
             log.info("Added entry {} to group {}", event.getEntryId(), event.getGroupId());
 
-            archiveService.archiveEntry(group, entry);
+            archiveService.notifyAdapters(group, "ENTRY_ADDED");
         }, () -> log.warn("Group {} not found for ENTRY_ADDED event", event.getGroupId()));
     }
 
     private void handleGroupClosed(LogEvent event) {
         repository.findByGroupId(event.getGroupId()).ifPresentOrElse(group -> {
             log.info("Group {} closed, triggering archive", event.getGroupId());
-            archiveService.archiveGroup(group);
+            archiveService.notifyAdapters(group, "GROUP_CLOSED");
         }, () -> log.warn("Group {} not found for GROUP_CLOSED event", event.getGroupId()));
     }
 }

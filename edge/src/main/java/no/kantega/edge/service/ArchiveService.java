@@ -1,12 +1,10 @@
 package no.kantega.edge.service;
 
 import no.kantega.edge.config.AdapterConfig;
-import no.kantega.edge.config.AdapterConfig.TriggerType;
 import no.kantega.edge.config.AdaptersProperties;
 import no.kantega.edge.model.ArchiveGroup;
 import no.kantega.edge.model.ArchiveGroup.ArchiveError;
 import no.kantega.edge.model.ArchiveGroup.ArchiveStatus;
-import no.kantega.edge.model.ArchiveGroup.LogEntryData;
 import no.kantega.edge.model.ArchiveRequest;
 import no.kantega.edge.model.ArchiveResult;
 import no.kantega.edge.repository.ArchiveGroupRepository;
@@ -38,70 +36,38 @@ public class ArchiveService {
         this.adapters = adaptersProperties.getAdapters();
     }
 
-    public void archiveEntry(ArchiveGroup group, LogEntryData entry) {
-        List<AdapterConfig> entryAdapters = adapters.stream()
-                .filter(a -> a.getTrigger() == TriggerType.ON_ENTRY)
-                .collect(Collectors.toList());
-
-        ArchiveRequest request = new ArchiveRequest(
-                group.getGroupId(),
-                group.getName(),
-                List.of(new ArchiveRequest.LogEntry(entry.getEntryId(), entry.getContent(), entry.getTimestamp()))
-        );
-
-        for (AdapterConfig adapter : entryAdapters) {
-            entry.getAdapterStatuses().put(adapter.getName(), ArchiveStatus.IN_PROGRESS);
-            repository.save(group);
-
-            ArchiveResult result = adapterClient.sendToAdapter(adapter.getUrl(), request);
-
-            if (result.isSuccess()) {
-                entry.getAdapterStatuses().put(adapter.getName(), ArchiveStatus.ARCHIVED);
-                log.info("Entry {} archived to {} for group {}", entry.getEntryId(), adapter.getName(), group.getGroupId());
-            } else {
-                entry.getAdapterStatuses().put(adapter.getName(), ArchiveStatus.FAILED);
-                group.getErrors().add(new ArchiveError(adapter.getName(), result.getMessage(), Instant.now()));
-                log.error("Failed to archive entry {} to {} for group {}: {}",
-                        entry.getEntryId(), adapter.getName(), group.getGroupId(), result.getMessage());
-            }
-        }
-
-        group.setUpdatedAt(Instant.now());
-        repository.save(group);
-    }
-
-    public void archiveGroup(ArchiveGroup group) {
-        List<AdapterConfig> groupAdapters = adapters.stream()
-                .filter(a -> a.getTrigger() == TriggerType.ON_GROUP_CLOSE)
-                .collect(Collectors.toList());
-
-        group.setStatus(ArchiveStatus.IN_PROGRESS);
-        group.setUpdatedAt(Instant.now());
-        repository.save(group);
-
-        ArchiveRequest request = toArchiveRequest(group);
+    public void notifyAdapters(ArchiveGroup group, String eventType) {
+        ArchiveRequest request = toArchiveRequest(group, eventType);
 
         List<ArchiveError> newErrors = new ArrayList<>();
-        for (AdapterConfig adapter : groupAdapters) {
+        for (AdapterConfig adapter : adapters) {
             ArchiveResult result = adapterClient.sendToAdapter(adapter.getUrl(), request);
             if (!result.isSuccess()) {
                 newErrors.add(new ArchiveError(adapter.getName(), result.getMessage(), Instant.now()));
+                log.error("Adapter {} failed for group {} on {}: {}",
+                        adapter.getName(), group.getGroupId(), eventType, result.getMessage());
+            } else {
+                log.info("Adapter {} notified for group {} on {}", adapter.getName(), group.getGroupId(), eventType);
             }
         }
 
-        if (newErrors.isEmpty()) {
-            group.setStatus(ArchiveStatus.ARCHIVED);
-            log.info("Group {} archived successfully", group.getGroupId());
-        } else {
+        if (!newErrors.isEmpty()) {
             group.getErrors().addAll(newErrors);
-            group.setRetryCount(group.getRetryCount() + 1);
-            if (group.getRetryCount() >= MAX_RETRIES) {
-                group.setStatus(ArchiveStatus.FAILED);
-                log.error("Group {} failed after {} retries", group.getGroupId(), MAX_RETRIES);
+        }
+
+        if ("GROUP_CLOSED".equals(eventType)) {
+            if (newErrors.isEmpty()) {
+                group.setStatus(ArchiveStatus.ARCHIVED);
             } else {
-                group.setStatus(ArchiveStatus.PENDING);
-                log.warn("Group {} archive attempt failed, will retry ({}/{})",
-                        group.getGroupId(), group.getRetryCount(), MAX_RETRIES);
+                group.setRetryCount(group.getRetryCount() + 1);
+                if (group.getRetryCount() >= MAX_RETRIES) {
+                    group.setStatus(ArchiveStatus.FAILED);
+                    log.error("Group {} failed after {} retries", group.getGroupId(), MAX_RETRIES);
+                } else {
+                    group.setStatus(ArchiveStatus.PENDING);
+                    log.warn("Group {} archive attempt failed, will retry ({}/{})",
+                            group.getGroupId(), group.getRetryCount(), MAX_RETRIES);
+                }
             }
         }
 
@@ -111,7 +77,7 @@ public class ArchiveService {
 
     public void retryGroup(ArchiveGroup group) {
         log.info("Manual retry triggered for group {}", group.getGroupId());
-        archiveGroup(group);
+        notifyAdapters(group, "GROUP_CLOSED");
     }
 
     public void retryFailed() {
@@ -123,14 +89,14 @@ public class ArchiveService {
         for (ArchiveGroup group : retryable) {
             log.info("Retrying archive for group {} (attempt {}/{})",
                     group.getGroupId(), group.getRetryCount() + 1, MAX_RETRIES);
-            archiveGroup(group);
+            notifyAdapters(group, "GROUP_CLOSED");
         }
     }
 
-    private ArchiveRequest toArchiveRequest(ArchiveGroup group) {
+    private ArchiveRequest toArchiveRequest(ArchiveGroup group, String eventType) {
         List<ArchiveRequest.LogEntry> entries = group.getEntries().stream()
                 .map(e -> new ArchiveRequest.LogEntry(e.getEntryId(), e.getContent(), e.getTimestamp()))
                 .collect(Collectors.toList());
-        return new ArchiveRequest(group.getGroupId(), group.getName(), entries);
+        return new ArchiveRequest(eventType, group.getGroupId(), group.getName(), entries);
     }
 }

@@ -20,6 +20,11 @@ public class ArchiveService {
     }
 
     public ArchiveResult archive(ArchiveRequest request) {
+        if ("ENTRY_ADDED".equals(request.getEventType())) {
+            log.info("Skipping ENTRY_ADDED for group {} — Noark B only archives on GROUP_CLOSED", request.getGroupId());
+            return ArchiveResult.ok();
+        }
+
         try {
             log.info("Archiving group {} ({}) to Noark B", request.getGroupId(), request.getGroupName());
 

@@ -18,7 +18,7 @@ class ZipServiceTest {
 
     @Test
     void createZip_containsMetadataAndEntries() throws IOException {
-        ArchiveRequest request = new ArchiveRequest(1L, "Test Group", List.of(
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Test Group", List.of(
                 new ArchiveRequest.LogEntry(10L, "first entry", "2024-01-01T00:00:00Z"),
                 new ArchiveRequest.LogEntry(20L, "second entry", "2024-01-02T00:00:00Z")
         ));
@@ -31,7 +31,7 @@ class ZipServiceTest {
 
     @Test
     void createZip_metadataContainsGroupInfo() throws IOException {
-        ArchiveRequest request = new ArchiveRequest(42L, "My Group", List.of(
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 42L, "My Group", List.of(
                 new ArchiveRequest.LogEntry(1L, "content", "2024-01-01T00:00:00Z")
         ));
 
@@ -45,7 +45,7 @@ class ZipServiceTest {
 
     @Test
     void createZip_entryContentIsCorrect() throws IOException {
-        ArchiveRequest request = new ArchiveRequest(1L, "Group", List.of(
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of(
                 new ArchiveRequest.LogEntry(10L, "hello world", "2024-01-01T00:00:00Z")
         ));
 
@@ -57,7 +57,7 @@ class ZipServiceTest {
 
     @Test
     void createZip_emptyEntries() throws IOException {
-        ArchiveRequest request = new ArchiveRequest(1L, "Empty", List.of());
+        ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Empty", List.of());
         byte[] zip = zipService.createZip(request);
         List<String> entryNames = getZipEntryNames(zip);
 

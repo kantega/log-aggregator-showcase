@@ -1,7 +1,6 @@
 package no.kantega.edge.service;
 
 import no.kantega.edge.config.AdapterConfig;
-import no.kantega.edge.config.AdapterConfig.TriggerType;
 import no.kantega.edge.config.AdaptersProperties;
 import no.kantega.edge.model.ArchiveGroup;
 import no.kantega.edge.model.ArchiveGroup.ArchiveStatus;
@@ -36,177 +35,149 @@ class ArchiveServiceTest {
         return new ArchiveService(repository, adapterClient, props);
     }
 
-    private static AdapterConfig entryAdapter(String name, String url) {
-        return new AdapterConfig(name, url, TriggerType.ON_ENTRY);
-    }
-
-    private static AdapterConfig groupAdapter(String name, String url) {
-        return new AdapterConfig(name, url, TriggerType.ON_GROUP_CLOSE);
-    }
-
-    // --- archiveGroup tests ---
+    // --- notifyAdapters: all adapters called ---
 
     @Test
-    void archiveGroup_allAdaptersSucceed_statusArchived() {
+    void notifyAdapters_callsAllRegisteredAdapters() {
         ArchiveService service = createService(List.of(
-                groupAdapter("group-adapter", "http://group:8083")));
+                new AdapterConfig("adapter-a", "http://a:8082"),
+                new AdapterConfig("adapter-b", "http://b:8083")));
 
         ArchiveGroup group = createGroup(1L, "Test");
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://group:8083"), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "group-adapter"));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter"));
 
-        service.archiveGroup(group);
+        service.notifyAdapters(group, "ENTRY_ADDED");
+
+        verify(adapterClient).sendToAdapter(eq("http://a:8082"), any());
+        verify(adapterClient).sendToAdapter(eq("http://b:8083"), any());
+    }
+
+    @Test
+    void notifyAdapters_callsAllAdaptersOnGroupClosed() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082"),
+                new AdapterConfig("adapter-b", "http://b:8083")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter"));
+
+        service.notifyAdapters(group, "GROUP_CLOSED");
+
+        verify(adapterClient).sendToAdapter(eq("http://a:8082"), any());
+        verify(adapterClient).sendToAdapter(eq("http://b:8083"), any());
+    }
+
+    @Test
+    void notifyAdapters_includesEventTypeInRequest() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter"));
+
+        service.notifyAdapters(group, "ENTRY_ADDED");
+
+        verify(adapterClient).sendToAdapter(eq("http://a:8082"), argThat(req ->
+                "ENTRY_ADDED".equals(req.getEventType())));
+    }
+
+    // --- GROUP_CLOSED status tracking ---
+
+    @Test
+    void notifyAdapters_groupClosed_allSucceed_statusArchived() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082"),
+                new AdapterConfig("adapter-b", "http://b:8083")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter"));
+
+        service.notifyAdapters(group, "GROUP_CLOSED");
 
         assertThat(group.getStatus()).isEqualTo(ArchiveStatus.ARCHIVED);
-        assertThat(group.getErrors()).isEmpty();
     }
 
     @Test
-    void archiveGroup_adapterFails_statusPendingForRetry() {
+    void notifyAdapters_groupClosed_adapterFails_statusPending() {
         ArchiveService service = createService(List.of(
-                groupAdapter("group-adapter", "http://group:8083")));
+                new AdapterConfig("adapter-a", "http://a:8082")));
 
         ArchiveGroup group = createGroup(1L, "Test");
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://group:8083"), any()))
-                .thenReturn(new ArchiveResult(false, "Connection refused", "group-adapter"));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(false, "timeout", "adapter-a"));
 
-        service.archiveGroup(group);
+        service.notifyAdapters(group, "GROUP_CLOSED");
 
         assertThat(group.getStatus()).isEqualTo(ArchiveStatus.PENDING);
         assertThat(group.getRetryCount()).isEqualTo(1);
         assertThat(group.getErrors()).hasSize(1);
-        assertThat(group.getErrors().get(0).getAdapter()).isEqualTo("group-adapter");
     }
 
     @Test
-    void archiveGroup_maxRetriesReached_statusFailed() {
+    void notifyAdapters_groupClosed_maxRetries_statusFailed() {
         ArchiveService service = createService(List.of(
-                groupAdapter("group-adapter", "http://group:8083")));
+                new AdapterConfig("adapter-a", "http://a:8082")));
 
         ArchiveGroup group = createGroup(1L, "Test");
         group.setRetryCount(2);
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://group:8083"), any()))
-                .thenReturn(new ArchiveResult(false, "fail", "group-adapter"));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(false, "fail", "adapter-a"));
 
-        service.archiveGroup(group);
+        service.notifyAdapters(group, "GROUP_CLOSED");
 
         assertThat(group.getStatus()).isEqualTo(ArchiveStatus.FAILED);
         assertThat(group.getRetryCount()).isEqualTo(3);
     }
 
+    // --- ENTRY_ADDED does not change group status ---
+
     @Test
-    void archiveGroup_setsInProgressBeforeArchiving() {
+    void notifyAdapters_entryAdded_doesNotChangeGroupStatus() {
         ArchiveService service = createService(List.of(
-                groupAdapter("group-adapter", "http://group:8083")));
+                new AdapterConfig("adapter-a", "http://a:8082")));
 
         ArchiveGroup group = createGroup(1L, "Test");
-        List<ArchiveStatus> statusesAtSave = new ArrayList<>();
-        when(repository.save(any(ArchiveGroup.class))).thenAnswer(i -> {
-            ArchiveGroup g = i.getArgument(0);
-            statusesAtSave.add(g.getStatus());
-            return g;
-        });
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(adapterClient.sendToAdapter(any(), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "group-adapter"));
+                .thenReturn(new ArchiveResult(true, "ok", "adapter-a"));
 
-        service.archiveGroup(group);
+        service.notifyAdapters(group, "ENTRY_ADDED");
 
-        assertThat(statusesAtSave).hasSize(2);
-        assertThat(statusesAtSave.get(0)).isEqualTo(ArchiveStatus.IN_PROGRESS);
-        assertThat(statusesAtSave.get(1)).isEqualTo(ArchiveStatus.ARCHIVED);
+        assertThat(group.getStatus()).isEqualTo(ArchiveStatus.PENDING);
     }
 
     @Test
-    void archiveGroup_doesNotCallEntryAdapters() {
+    void notifyAdapters_entryAdded_adapterFails_recordsErrorButKeepsStatus() {
         ArchiveService service = createService(List.of(
-                entryAdapter("entry-adapter", "http://entry:8082"),
-                groupAdapter("group-adapter", "http://group:8083")));
+                new AdapterConfig("adapter-a", "http://a:8082")));
 
         ArchiveGroup group = createGroup(1L, "Test");
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://group:8083"), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "group-adapter"));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(false, "timeout", "adapter-a"));
 
-        service.archiveGroup(group);
+        service.notifyAdapters(group, "ENTRY_ADDED");
 
-        verify(adapterClient, never()).sendToAdapter(eq("http://entry:8082"), any());
-        verify(adapterClient).sendToAdapter(eq("http://group:8083"), any());
-    }
-
-    // --- archiveEntry tests ---
-
-    @Test
-    void archiveEntry_success_setsAdapterStatusArchived() {
-        ArchiveService service = createService(List.of(
-                entryAdapter("entry-adapter", "http://entry:8082"),
-                groupAdapter("group-adapter", "http://group:8083")));
-
-        ArchiveGroup group = createGroup(1L, "Test");
-        ArchiveGroup.LogEntryData entry = new ArchiveGroup.LogEntryData(10L, "content", "2026-04-03T12:00:00");
-        group.getEntries().add(entry);
-
-        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://entry:8082"), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "entry-adapter"));
-
-        service.archiveEntry(group, entry);
-
-        assertThat(entry.getAdapterStatuses().get("entry-adapter")).isEqualTo(ArchiveStatus.ARCHIVED);
-        assertThat(group.getErrors()).isEmpty();
-        verify(adapterClient, never()).sendToAdapter(eq("http://group:8083"), any());
-    }
-
-    @Test
-    void archiveEntry_failure_setsAdapterStatusFailed() {
-        ArchiveService service = createService(List.of(
-                entryAdapter("entry-adapter", "http://entry:8082")));
-
-        ArchiveGroup group = createGroup(1L, "Test");
-        ArchiveGroup.LogEntryData entry = new ArchiveGroup.LogEntryData(10L, "content", "2026-04-03T12:00:00");
-        group.getEntries().add(entry);
-
-        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://entry:8082"), any()))
-                .thenReturn(new ArchiveResult(false, "timeout", "entry-adapter"));
-
-        service.archiveEntry(group, entry);
-
-        assertThat(entry.getAdapterStatuses().get("entry-adapter")).isEqualTo(ArchiveStatus.FAILED);
+        assertThat(group.getStatus()).isEqualTo(ArchiveStatus.PENDING);
         assertThat(group.getErrors()).hasSize(1);
-        assertThat(group.getErrors().get(0).getAdapter()).isEqualTo("entry-adapter");
     }
 
-    @Test
-    void archiveEntry_multipleAdapters_callsAll() {
-        ArchiveService service = createService(List.of(
-                entryAdapter("adapter-x", "http://x:8082"),
-                entryAdapter("adapter-y", "http://y:8085")));
-
-        ArchiveGroup group = createGroup(1L, "Test");
-        ArchiveGroup.LogEntryData entry = new ArchiveGroup.LogEntryData(10L, "content", "2026-04-03T12:00:00");
-        group.getEntries().add(entry);
-
-        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(adapterClient.sendToAdapter(eq("http://x:8082"), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "adapter-x"));
-        when(adapterClient.sendToAdapter(eq("http://y:8085"), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "adapter-y"));
-
-        service.archiveEntry(group, entry);
-
-        assertThat(entry.getAdapterStatuses().get("adapter-x")).isEqualTo(ArchiveStatus.ARCHIVED);
-        assertThat(entry.getAdapterStatuses().get("adapter-y")).isEqualTo(ArchiveStatus.ARCHIVED);
-    }
-
-    // --- retry tests ---
+    // --- retry ---
 
     @Test
     void retryFailed_retriesPendingGroupsWithRetryCount() {
         ArchiveService service = createService(List.of(
-                groupAdapter("group-adapter", "http://group:8083")));
+                new AdapterConfig("adapter-a", "http://a:8082")));
 
         ArchiveGroup retryable = createGroup(1L, "Retry");
         retryable.setRetryCount(1);
@@ -214,11 +185,11 @@ class ArchiveServiceTest {
         when(repository.findByStatus(ArchiveStatus.PENDING)).thenReturn(List.of(retryable, fresh));
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(adapterClient.sendToAdapter(any(), any()))
-                .thenReturn(new ArchiveResult(true, "ok", "group-adapter"));
+                .thenReturn(new ArchiveResult(true, "ok", "adapter-a"));
 
         service.retryFailed();
 
-        verify(repository, times(2)).save(any());
+        verify(adapterClient, times(1)).sendToAdapter(any(), any());
     }
 
     private ArchiveGroup createGroup(Long groupId, String name) {
