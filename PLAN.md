@@ -114,15 +114,28 @@ log-aggregator-showcase/
 
 ## What's left to do
 
-### Open GitHub issue
-- [ ] **Issue #2** — Upgrade right-side panels: WebSocket RabbitMQ view, detailed Edge panel with retry, mock setup controls, global RESET button. See: https://github.com/kantega/log-aggregator-showcase/issues/2
+### Completed GitHub issues
+- [x] **Issue #2** — Upgrade right-side panels: WebSocket RabbitMQ view, detailed Edge panel with retry, mock setup controls, global RESET button
+  - [x] #5 — UI Design: overall layout and panel redesign
+  - [x] #6 — Docker Compose: enable RabbitMQ Web STOMP plugin
+  - [x] #7 — Edge panel: detailed archive state with status badges
+  - [x] #8 — Mock panel: split Noark A/B history + setup controls
+  - [x] #9 — RabbitMQ panel: WebSocket live view via STOMP
+  - [x] #10 — Global RESET button
+  - [x] #11 — Documentation updates (SpringDoc OpenAPI + Swagger UI + backwards compatibility tests)
 
 ### Integration tests
 - [ ] Error handling test — configure mock to 500 → close group → verify FAILED in Edge
 - [ ] Exponential backoff test — mock fails twice then succeeds → verify retries with increasing delay (this test is run on stage after live-coding backoff)
 
+### API Documentation — COMPLETE
+- [x] SpringDoc OpenAPI (Swagger UI) on all 5 services
+- [x] Frontend `/docs` page with tabbed Swagger UI iframes
+- [x] OpenAPI backwards compatibility tests using openapi-diff on all 5 services
+- [x] CLAUDE.md updated to point to live Swagger UI instead of manual endpoint lists
+
 ### Claude Code infra
-- [x] Root `CLAUDE.md` — architecture, service map, tech stack, port map, API contracts, demo flow, sub-project guidance
+- [x] Root `CLAUDE.md` — architecture, service map, tech stack, port map, demo flow, sub-project guidance
 - [x] `integration-tests/CLAUDE.md` — Playwright setup, agents, mock API usage
 - [x] `frontend/.claude/CLAUDE.md` — Angular/TypeScript best practices
 - [ ] Per-service `CLAUDE.md` for Spring Boot services (log-manager, edge, adapters, mock)
