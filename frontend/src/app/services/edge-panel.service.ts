@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription, interval, switchMap, catchError, of } from 'rxjs';
+import { Subscription, timer, switchMap, catchError, of } from 'rxjs';
 
 export interface ArchiveEntry {
   entryId: number;
@@ -52,7 +52,7 @@ export class EdgePanelService {
       return;
     }
 
-    this.subscription = interval(3000)
+    this.subscription = timer(0, 3000)
       .pipe(
         switchMap(() =>
           this.http.get<ArchiveGroup[]>('/edge-api/api/groups').pipe(catchError(() => of(null))),

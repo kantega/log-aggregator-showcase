@@ -250,13 +250,13 @@ export class LayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadGroups();
-    this.rabbitmqService.startPolling();
+    this.rabbitmqService.connect();
     this.edgeService.startPolling();
     this.mockService.startPolling();
   }
 
   ngOnDestroy(): void {
-    this.rabbitmqService.stopPolling();
+    this.rabbitmqService.disconnect();
     this.edgeService.stopPolling();
     this.mockService.stopPolling();
   }

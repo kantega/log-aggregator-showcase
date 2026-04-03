@@ -17,5 +17,10 @@
     "target": "http://localhost:8084",
     "secure": false,
     "pathRewrite": { "^/mock-api": "" }
+  },
+  "/ws": {
+    "target": "http://localhost:15674",
+    "secure": false,
+    "ws": true
   }
 }
