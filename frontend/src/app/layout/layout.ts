@@ -29,11 +29,19 @@ import { MockPanelComponent } from '../panels/mock-panel';
   template: `
     <div class="flex h-screen overflow-hidden">
       <!-- Left Side: Log Manager + Edge -->
-      <div class="w-[55%] flex flex-col border-r border-gray-200 bg-white overflow-hidden">
+      <div [class]="'flex flex-col border-r border-gray-200 bg-white overflow-hidden transition-all duration-300 ' + (showAllServices() ? 'w-[55%]' : 'w-full')">
         <!-- Header -->
         <header class="px-6 py-4 border-b border-gray-200 bg-blue-50 shrink-0 flex items-center justify-between">
           <h1 class="text-xl font-semibold text-blue-800">Log Manager</h1>
           <div class="flex items-center gap-2">
+            <button
+              type="button"
+              data-testid="toggle-view-button"
+              (click)="showAllServices.set(!showAllServices())"
+              [class]="'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ' + (showAllServices() ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-blue-100 text-blue-800 hover:bg-blue-200')"
+            >
+              {{ showAllServices() ? 'Log Manager Only' : 'Show All Services' }}
+            </button>
             <a
               routerLink="/docs"
               data-testid="docs-button"
@@ -209,23 +217,27 @@ import { MockPanelComponent } from '../panels/mock-panel';
         </div>
 
         <!-- Edge Panel (lower-left, ~35% of remaining height) -->
-        <div class="flex-[1] border-t border-gray-200 min-h-0">
-          <app-edge-panel />
-        </div>
+        @if (showAllServices()) {
+          <div class="flex-[1] border-t border-gray-200 min-h-0">
+            <app-edge-panel />
+          </div>
+        }
       </div>
 
       <!-- Right Side: RabbitMQ (20%) + Mock (80%) -->
-      <div class="w-[45%] flex flex-col overflow-hidden bg-gray-50">
-        <!-- RabbitMQ Panel (~30%) -->
-        <div class="flex-[3] border-b border-gray-200 min-h-0">
-          <app-rabbitmq-panel />
-        </div>
+      @if (showAllServices()) {
+        <div class="w-[45%] flex flex-col overflow-hidden bg-gray-50">
+          <!-- RabbitMQ Panel (~30%) -->
+          <div class="flex-[3] border-b border-gray-200 min-h-0">
+            <app-rabbitmq-panel />
+          </div>
 
-        <!-- Mock Panel (~70%) -->
-        <div class="flex-[7] min-h-0">
-          <app-mock-panel />
+          <!-- Mock Panel (~70%) -->
+          <div class="flex-[7] min-h-0">
+            <app-mock-panel />
+          </div>
         </div>
-      </div>
+      }
     </div>
 
     <!-- Toast notification -->
@@ -255,6 +267,7 @@ export class LayoutComponent implements OnInit, OnDestroy {
   readonly entries = signal<LogEntry[]>([]);
   readonly loadingGroups = signal(false);
   readonly loadingEntries = signal(false);
+  readonly showAllServices = signal(true);
   readonly toastMessage = signal<string | null>(null);
   readonly toastType = signal<'success' | 'error'>('success');
 
