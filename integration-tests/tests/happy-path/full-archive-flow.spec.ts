@@ -1,19 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Happy Path E2E — Full Archive Flow', () => {
-  test.beforeEach(async ({ request }) => {
-    // Reset mock to happy-path defaults
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('create group, add entries, close group, verify archiving in Noark A and B', async ({ page }) => {
     const groupName = `Happy Path Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Wait for RabbitMQ connection
     await expect(page.getByTestId('rabbitmq-status')).toHaveAttribute('aria-label', 'Connected', { timeout: 15000 });

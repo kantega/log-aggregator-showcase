@@ -1,18 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect } from '../base-test';
 
 test.describe('Edge Archive Tracking — ARCHIVED Status', () => {
-  test.beforeEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('edge panel shows ARCHIVED status after successful archiving', async ({ page }) => {
     const groupName = `Status Verify Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group, add entry, close
     await page.getByTestId('group-name-input').fill(groupName);

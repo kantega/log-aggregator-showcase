@@ -1,12 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Log Group CRUD — Close Group', () => {
   test('close a log group and verify it becomes read-only', async ({ page }) => {
     const groupName = `Close Test Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
 
     // Create group, select it, add one entry
     await page.getByTestId('group-name-input').fill(groupName);

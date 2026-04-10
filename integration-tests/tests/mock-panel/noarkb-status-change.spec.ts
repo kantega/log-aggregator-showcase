@@ -1,15 +1,7 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Mock Panel Controls — Noark B Status Change', () => {
-  test.afterEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('change Noark B status code and verify the status indicator updates', async ({ page }) => {
-    await page.goto(BASE_URL);
     await expect(page.getByTestId('mock-setup-controls')).toBeVisible();
 
     const statusSelect = page.getByTestId('mock-setup-noarkb-status');

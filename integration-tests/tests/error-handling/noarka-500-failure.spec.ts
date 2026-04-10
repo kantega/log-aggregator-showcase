@@ -1,27 +1,14 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Error Handling — Noark A 500 Failure', () => {
-  test.beforeEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-    // Configure Noark A to return 500 via API (reliable, not UI)
+  test('configure Noark A to return 500 and verify failure tracked in Edge', async ({ page, request }) => {
+    test.setTimeout(60000);
+
     await request.post(`${MOCK_URL}/api/test/setup`, {
       data: { endpoint: 'noarka', statusCode: 500 },
     });
-  });
 
-  test.afterEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
-  test('configure Noark A to return 500 and verify failure tracked in Edge', async ({ page }) => {
-    test.setTimeout(60000);
     const groupName = `Failure Test A ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group and add entry
     await page.getByTestId('group-name-input').fill(groupName);

@@ -1,25 +1,14 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Error Handling — Noark A 503 Failure', () => {
-  test.beforeEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
+  test('configure Noark A to return 503 and verify failure tracking', async ({ page, request }) => {
+    test.setTimeout(60000);
+
     await request.post(`${MOCK_URL}/api/test/setup`, {
       data: { endpoint: 'noarka', statusCode: 503 },
     });
-  });
 
-  test.afterEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
-  test('configure Noark A to return 503 and verify failure tracking', async ({ page }) => {
-    test.setTimeout(60000);
     const groupName = `Unavailable A ${Date.now()}`;
-
-    await page.goto(BASE_URL);
 
     // Create group and add entry
     await page.getByTestId('group-name-input').fill(groupName);

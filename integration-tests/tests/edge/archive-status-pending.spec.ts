@@ -1,20 +1,13 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Edge Archive Tracking — PENDING Status', () => {
   test('edge panel shows PENDING status briefly before archiving completes', async ({ page, request }) => {
     // Configure Noark A with 3-second delay via API
-    await request.post(`${MOCK_URL}/api/test/reset`);
     await request.post(`${MOCK_URL}/api/test/setup`, {
       data: { endpoint: 'noarka', statusCode: 200, delayMs: 3000 },
     });
 
     const groupName = `Pending Status Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group and add an entry
     await page.getByTestId('group-name-input').fill(groupName);

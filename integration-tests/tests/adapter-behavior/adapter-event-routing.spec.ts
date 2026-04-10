@@ -1,17 +1,6 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Adapter Behavior — Event Routing', () => {
-  test.beforeEach(async ({ page, request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-    await page.goto(BASE_URL);
-    page.on('dialog', dialog => dialog.accept());
-    await page.getByTestId('reset-button').click();
-    await page.waitForTimeout(2000);
-  });
-
   test('Adapter A archives on every event, Adapter B only on GROUP_CLOSED', async ({ page, request }) => {
     const groupName = `Routing Test ${Date.now()}`;
 

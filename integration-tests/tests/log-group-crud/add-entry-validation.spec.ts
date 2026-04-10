@@ -1,12 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Log Group CRUD — Add Entry Validation', () => {
   test('add entry button is disabled when entry content is empty', async ({ page }) => {
     const groupName = `Validation Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
 
     // Create and select a group
     await page.getByTestId('group-name-input').fill(groupName);

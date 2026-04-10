@@ -1,11 +1,7 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Docs Page — Navigate to Docs', () => {
   test('navigate to Docs page via the Docs button and verify structure', async ({ page }) => {
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Click Docs button
     await page.getByTestId('docs-button').click();

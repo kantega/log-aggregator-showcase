@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Log Group CRUD — Create Group', () => {
   test('create a new log group with a valid name', async ({ page }) => {
     const groupName = `My First Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Input should be empty, Create button disabled
     await expect(page.getByTestId('group-name-input')).toHaveValue('');

@@ -1,12 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Happy Path E2E — RabbitMQ Message Count', () => {
   test('verify RabbitMQ message count increments correctly for all mutations', async ({ page }) => {
     const groupName = `MQ Count Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
     await expect(page.getByTestId('rabbitmq-status')).toHaveAttribute('aria-label', 'Connected', { timeout: 15000 });
 
     // Record initial count

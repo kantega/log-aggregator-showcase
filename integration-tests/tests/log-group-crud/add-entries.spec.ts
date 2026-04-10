@@ -1,13 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Log Group CRUD — Add Entries', () => {
   test('add log entries to an open group', async ({ page }) => {
     const groupName = `Entry Test Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group
     await page.getByTestId('group-name-input').fill(groupName);

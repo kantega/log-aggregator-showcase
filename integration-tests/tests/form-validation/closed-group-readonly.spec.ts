@@ -1,12 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Form Validation — Closed Group Read-Only', () => {
   test('cannot add entries to a closed group', async ({ page }) => {
     const groupName = `Read Only Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
 
     // Create group, add entry, close
     await page.getByTestId('group-name-input').fill(groupName);

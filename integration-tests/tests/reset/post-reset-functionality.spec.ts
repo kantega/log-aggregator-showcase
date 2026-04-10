@@ -1,25 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect } from '../base-test';
 
 test.describe('Reset Functionality — Post-Reset', () => {
-  test('application is functional after a reset', async ({ page, request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-    await page.goto(BASE_URL);
-    page.on('dialog', dialog => dialog.accept());
-
-    // Reset
-    await page.getByTestId('reset-button').click();
-    await page.waitForTimeout(3000);
-
-    // Verify groups list is empty
-    await expect(async () => {
-      const groups = page.locator('[data-testid^="group-item-"]');
-      const count = await groups.count();
-      expect(count).toBe(0);
-    }).toPass({ timeout: 10000 });
-
+  test('application is functional after a reset', async ({ page }) => {
+    // Base fixture already performed reset and verified lists are empty
     const groupName = `Post Reset Group ${Date.now()}`;
 
     // Create a new group

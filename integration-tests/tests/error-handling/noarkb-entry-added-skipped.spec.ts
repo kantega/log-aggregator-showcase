@@ -1,21 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Error Handling — Noark B Skips ENTRY_ADDED', () => {
-  test.beforeEach(async ({ request, page }) => {
-    // Double-reset: first reset, wait for in-flight requests from prior tests to drain, then reset again
-    await request.post(`${MOCK_URL}/api/test/reset`);
-    await page.waitForTimeout(2000);
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('Noark B only archives on GROUP_CLOSED, skips ENTRY_ADDED events', async ({ page, request }) => {
     const groupName = `B Skip Test ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create group, add 2 entries
     await page.getByTestId('group-name-input').fill(groupName);

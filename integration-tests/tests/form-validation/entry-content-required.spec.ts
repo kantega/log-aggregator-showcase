@@ -1,12 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Form Validation — Entry Content Required', () => {
   test('add entry button remains disabled until entry content is non-empty', async ({ page }) => {
     const groupName = `Validation Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
 
     // Create and select a group
     await page.getByTestId('group-name-input').fill(groupName);

@@ -368,6 +368,135 @@ class FullPipelineIT {
         assertThat(groupA.get("status").asText()).isEqualTo("PENDING");
     }
 
+    // ==================== SCENARIO 6: ADAPTER EVENT ROUTING ====================
+
+    @Test
+    @Order(6)
+    void adapterEventRouting_noarkAGetsEntryAdded_noarkBOnlyGroupClosed() throws Exception {
+        // Create group and add 2 entries (do NOT close yet)
+        long groupId = createGroup("Routing Group");
+        addEntry(groupId, "First entry");
+        addEntry(groupId, "Second entry");
+
+        // Wait for adapter-a to process ENTRY_ADDED events
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode history = getMockHistory();
+            long noarkaCount = countHistoryByEndpoint(history, "noarka");
+            assertThat(noarkaCount).isEqualTo(2);
+        });
+
+        // Before close: noark-b should have received 0 requests
+        JsonNode historyBeforeClose = getMockHistory();
+        long noarkbBeforeClose = countHistoryByEndpoint(historyBeforeClose, "noarkb");
+        assertThat(noarkbBeforeClose).isEqualTo(0);
+
+        // Close the group
+        closeGroup(groupId);
+
+        // Wait for both adapters to process GROUP_CLOSED
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode history = getMockHistory();
+            // noark-a: 2 ENTRY_ADDED + 1 GROUP_CLOSED = 3
+            assertThat(countHistoryByEndpoint(history, "noarka")).isEqualTo(3);
+            // noark-b: 1 GROUP_CLOSED only
+            assertThat(countHistoryByEndpoint(history, "noarkb")).isEqualTo(1);
+        });
+    }
+
+    // ==================== SCENARIO 7: 400 ERROR CODE ====================
+
+    @Test
+    @Order(7)
+    void errorCode400_noarkAReturnsBadRequest_groupPending() throws Exception {
+        configureMock("noarka", 400, "{\"error\": \"bad request\"}");
+
+        long groupId = createGroup("Bad Request Group");
+        addEntry(groupId, "400 content");
+        closeGroup(groupId);
+
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode edgeGroup = getEdgeGroup(groupId);
+            assertThat(edgeGroup.get("status").asText()).isEqualTo("PENDING");
+        });
+
+        JsonNode edgeGroup = getEdgeGroup(groupId);
+        assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(1);
+        assertThat(edgeGroup.get("errors").size()).isGreaterThan(0);
+    }
+
+    // ==================== SCENARIO 8: 503 ERROR CODE ====================
+
+    @Test
+    @Order(8)
+    void errorCode503_noarkAReturnsServiceUnavailable_groupPending() throws Exception {
+        configureMock("noarka", 503, "{\"error\": \"service unavailable\"}");
+
+        long groupId = createGroup("Unavailable Group");
+        addEntry(groupId, "503 content");
+        closeGroup(groupId);
+
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode edgeGroup = getEdgeGroup(groupId);
+            assertThat(edgeGroup.get("status").asText()).isEqualTo("PENDING");
+        });
+
+        JsonNode edgeGroup = getEdgeGroup(groupId);
+        assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(1);
+        assertThat(edgeGroup.get("errors").size()).isGreaterThan(0);
+    }
+
+    // ==================== SCENARIO 9: NOARK-B ONLY FAILURE ====================
+
+    @Test
+    @Order(9)
+    void noarkBOnlyFailure_noarkBReturns500_groupPending() throws Exception {
+        // Only noark-b fails — noark-a stays healthy
+        configureMock("noarkb", 500, "{\"error\": \"internal error\"}");
+
+        long groupId = createGroup("NoarkB Failure Group");
+        addEntry(groupId, "B-fail content");
+        closeGroup(groupId);
+
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode edgeGroup = getEdgeGroup(groupId);
+            assertThat(edgeGroup.get("status").asText()).isEqualTo("PENDING");
+        });
+
+        JsonNode edgeGroup = getEdgeGroup(groupId);
+        assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(1);
+        assertThat(edgeGroup.get("errors").size()).isGreaterThan(0);
+
+        // noark-a should still have received its requests
+        JsonNode history = getMockHistory();
+        long noarkaCount = countHistoryByEndpoint(history, "noarka");
+        assertThat(noarkaCount).isGreaterThanOrEqualTo(1);
+    }
+
+    // ==================== SCENARIO 10: RESPONSE DELAY ====================
+
+    @Test
+    @Order(10)
+    void responseDelay_noarkASlowResponse_eventuallyArchived() throws Exception {
+        // Configure noark-a with a 3-second delay
+        configureMockWithDelay("noarka", 200, 3000);
+
+        long groupId = createGroup("Delay Group");
+        addEntry(groupId, "Delayed content");
+        closeGroup(groupId);
+
+        // Immediately after close, the group should NOT be ARCHIVED yet
+        // (the 3s delay on noark-a means archiving is still in progress)
+        Thread.sleep(500);
+        JsonNode earlyState = getEdgeGroup(groupId);
+        assertThat(earlyState.get("status").asText()).isNotEqualTo("ARCHIVED");
+
+        // Eventually it should reach ARCHIVED once the delay completes
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode edgeGroup = getEdgeGroup(groupId);
+            assertThat(edgeGroup.get("status").asText()).isEqualTo("ARCHIVED");
+        });
+    }
+
     // ==================== HELPER METHODS ====================
 
     private long createGroup(String name) throws Exception {
@@ -428,6 +557,15 @@ class FullPipelineIT {
                 .uri("http://localhost:" + mockPort + "/api/test/setup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"endpoint\": \"" + endpoint + "\", \"statusCode\": " + statusCode + ", \"body\": \"" + body.replace("\"", "\\\"") + "\"}")
+                .retrieve()
+                .body(String.class);
+    }
+
+    private void configureMockWithDelay(String endpoint, int statusCode, long delayMs) {
+        restClient.post()
+                .uri("http://localhost:" + mockPort + "/api/test/setup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"endpoint\": \"" + endpoint + "\", \"statusCode\": " + statusCode + ", \"delayMs\": " + delayMs + "}")
                 .retrieve()
                 .body(String.class);
     }

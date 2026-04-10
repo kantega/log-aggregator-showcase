@@ -1,17 +1,9 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Mock Panel Controls — Noark A Delay Config', () => {
-  test.afterEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('configure Noark A delay and verify it takes effect', async ({ page, request }) => {
     const groupName = `Delay Test Group ${Date.now()}`;
 
-    await page.goto(BASE_URL);
     await expect(page.getByTestId('mock-setup-controls')).toBeVisible();
 
     // Set 3-second delay on Noark A via UI

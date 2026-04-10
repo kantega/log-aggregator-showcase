@@ -1,18 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect } from '../base-test';
 
 test.describe('Edge Archive Tracking — Group Card Appears', () => {
-  test.beforeEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('edge panel shows archive group card after group creation', async ({ page }) => {
     const groupName = `Edge Track Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create a group
     await page.getByTestId('group-name-input').fill(groupName);

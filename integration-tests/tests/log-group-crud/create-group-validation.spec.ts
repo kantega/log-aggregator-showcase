@@ -1,11 +1,7 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Log Group CRUD — Create Group Validation', () => {
   test('create button is disabled when group name input is empty', async ({ page }) => {
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Button disabled with empty input
     await expect(page.getByTestId('create-group-button')).toBeDisabled();

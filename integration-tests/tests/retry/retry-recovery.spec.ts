@@ -1,28 +1,14 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Retry Mechanism — Recovery', () => {
-  test.beforeEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-    // Configure Noark A to return 500 via API
-    await request.post(`${MOCK_URL}/api/test/setup`, {
-      data: { endpoint: 'noarka', statusCode: 500 },
-    });
-  });
-
-  test.afterEach(async ({ request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-  });
-
   test('archive recovers after mock restored to 200 and retry button clicked', async ({ page, request }) => {
     test.setTimeout(90000);
 
-    const groupName = `Recovery Group ${Date.now()}`;
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarka', statusCode: 500 },
+    });
 
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
+    const groupName = `Recovery Group ${Date.now()}`;
 
     // Create group and add entry
     await page.getByTestId('group-name-input').fill(groupName);

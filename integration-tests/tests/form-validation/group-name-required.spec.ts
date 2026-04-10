@@ -1,11 +1,7 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Form Validation — Group Name Required', () => {
   test('create button remains disabled until group name is non-empty', async ({ page }) => {
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     const input = page.getByTestId('group-name-input');
     const button = page.getByTestId('create-group-button');

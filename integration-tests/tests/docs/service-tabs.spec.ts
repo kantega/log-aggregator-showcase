@@ -1,6 +1,4 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect, BASE_URL } from '../base-test';
 
 test.describe('Docs Page — Service Tabs', () => {
   test('switch between service tabs on the Docs page', async ({ page }) => {

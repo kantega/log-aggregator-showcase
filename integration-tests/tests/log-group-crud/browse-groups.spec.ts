@@ -1,15 +1,10 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('Log Group CRUD — Browse Groups', () => {
   test('browse all groups and switch between them', async ({ page }) => {
     const suffix = Date.now();
     const groupOneName = `Group One ${suffix}`;
     const groupTwoName = `Group Two ${suffix}`;
-
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
 
     // Create two groups
     await page.getByTestId('group-name-input').fill(groupOneName);

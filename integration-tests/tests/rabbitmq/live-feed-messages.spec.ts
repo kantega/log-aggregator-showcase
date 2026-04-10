@@ -1,12 +1,8 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
+import { test, expect } from '../base-test';
 
 test.describe('RabbitMQ Integration — Live Feed Messages', () => {
   test('live feed shows message details on every mutation', async ({ page }) => {
     const groupName = `Feed Test Group ${Date.now()}`;
-
-    await page.goto(BASE_URL);
     await expect(page.getByTestId('rabbitmq-status')).toHaveAttribute('aria-label', 'Connected', { timeout: 15000 });
 
     const feed = page.getByTestId('rabbitmq-feed');

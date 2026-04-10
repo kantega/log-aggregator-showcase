@@ -1,16 +1,7 @@
-import { test, expect } from '@playwright/test';
-
-const BASE_URL = 'http://localhost:4200';
-const MOCK_URL = 'http://localhost:8084';
+import { test, expect, MOCK_URL } from '../base-test';
 
 test.describe('Reset Functionality — Global Reset', () => {
   test('RESET button clears all groups, entries, Edge data, and mock history', async ({ page, request }) => {
-    await request.post(`${MOCK_URL}/api/test/reset`);
-    await page.goto(BASE_URL);
-    await expect(page.getByRole('heading', { name: 'Log Manager' })).toBeVisible();
-
-    // Handle confirmation dialogs
-    page.on('dialog', dialog => dialog.accept());
 
     // Create some data first
     await page.getByTestId('group-name-input').fill(`Reset Group One ${Date.now()}`);
