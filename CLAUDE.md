@@ -67,13 +67,23 @@ Or start infrastructure only: `docker compose up -d`
 
 ## Testing and debugging
 
-The `integration-tests/` folder has a full Playwright setup with Claude agents for test planning, generation, and healing. If you need to debug frontend issues or verify UI behavior, work from `integration-tests/` — it has browser automation capabilities and its own CLAUDE.md with details on running tests and using Playwright agents.
+**This project maintains two test suites that must stay in sync.** When adding new functionality that changes pipeline behavior, you MUST add coverage in both:
+
+1. **Java `FullPipelineIT`** (`edge/src/test/java/no/kantega/edge/FullPipelineIT.java`) — API-driven integration test with TestContainers
+2. **Playwright E2E** (`integration-tests/tests/`) — browser-based tests against the live stack
+
+Run `/test-coverage-parity` for the full guide on how to add tests to both suites, including helpers, API references, and the key differences to account for (retry scheduler, assertion style, etc.).
 
 ```bash
-cd integration-tests
-npx playwright test --trace on            # run all tests
-npx playwright test tests/specific.spec.ts # run one test
+# Java integration test
+cd edge && mvn test -Dtest=FullPipelineIT
+
+# Playwright E2E tests
+cd integration-tests && npx playwright test --trace on
+cd integration-tests && npx playwright test tests/specific.spec.ts # run one test
 ```
+
+The `integration-tests/` folder also has Playwright agents for test planning, generation, and healing, plus its own CLAUDE.md with details on running tests.
 
 ## Working with sub-projects
 
