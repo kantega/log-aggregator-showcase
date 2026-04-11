@@ -72,7 +72,7 @@ Or start infrastructure only: `docker compose up -d`
 1. **Java `FullPipelineIT`** (`edge/src/test/java/no/kantega/edge/FullPipelineIT.java`) — API-driven integration test with TestContainers
 2. **Playwright E2E** (`integration-tests/tests/`) — browser-based tests against the live stack
 
-Run `/test-coverage-parity` for the full guide on how to add tests to both suites, including helpers, API references, and the key differences to account for (retry scheduler, assertion style, etc.).
+Run `/testing-guide` for the full guide on how to add tests at all three levels, including helpers, API references, and the key differences to account for (retry scheduler, assertion style, etc.).
 
 ```bash
 # Java integration test

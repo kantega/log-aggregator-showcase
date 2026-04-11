@@ -1,6 +1,6 @@
 ---
-name: test-coverage-parity
-description: Ensures unit tests, Java FullPipelineIT, and Playwright E2E tests all get updated when adding new functionality across microservices and frontend. Use this when implementing new features, error handling, or integration behavior that spans multiple services.
+name: testing-guide
+description: Guide for adding tests at all three levels (unit, Java integration, Playwright E2E) when implementing new functionality across microservices and frontend. Use this when adding features, error handling, or integration behavior.
 ---
 
 # Test Coverage: Unit Tests + Java FullPipelineIT + Playwright E2E
