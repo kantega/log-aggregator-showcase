@@ -26,6 +26,17 @@ class TransformServiceTest {
     }
 
     @Test
+    void transform_mapsEventType() {
+        ArchiveRequest entryRequest = new ArchiveRequest("ENTRY_ADDED", 1L, "Group", List.of(
+                new ArchiveRequest.LogEntry(10L, "content", "2024-01-01T00:00:00Z")
+        ));
+        assertThat(transformService.transform(entryRequest).getEventType()).isEqualTo("ENTRY_ADDED");
+
+        ArchiveRequest closedRequest = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of());
+        assertThat(transformService.transform(closedRequest).getEventType()).isEqualTo("GROUP_CLOSED");
+    }
+
+    @Test
     void transform_mapsEntriesToDocuments() {
         ArchiveRequest request = new ArchiveRequest("GROUP_CLOSED", 1L, "Group", List.of(
                 new ArchiveRequest.LogEntry(10L, "first", "2024-01-01T00:00:00Z"),

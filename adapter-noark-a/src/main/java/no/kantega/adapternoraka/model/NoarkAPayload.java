@@ -11,6 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NoarkAPayload {
+    private String eventType;
     private String title;
     private String description;
     private String archiveDate;

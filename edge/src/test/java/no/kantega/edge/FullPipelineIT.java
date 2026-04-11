@@ -497,6 +497,51 @@ class FullPipelineIT {
         });
     }
 
+    // ==================== SCENARIO 11: CONTENT VALIDATION ====================
+
+    @Test
+    @Order(11)
+    void contentValidation_entryWithForbiddenText_returns400ButGroupClosedUnaffected() throws Exception {
+        // Create group and add an entry with "error" in the content
+        long groupId = createGroup("Validation Group");
+        addEntry(groupId, "This entry has an error in it");
+        addEntry(groupId, "This entry is fine");
+
+        // Wait for ENTRY_ADDED events to be processed — the forbidden entry causes a 400
+        // from the mock, which is recorded as an error in Edge, but ENTRY_ADDED failures
+        // do not change group status (only GROUP_CLOSED drives status transitions)
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode edgeGroup = getEdgeGroup(groupId);
+            assertThat(edgeGroup.get("errors").size()).isGreaterThan(0);
+        });
+
+        // Verify the error was recorded for the forbidden entry
+        JsonNode edgeGroup = getEdgeGroup(groupId);
+        boolean hasValidationError = false;
+        for (JsonNode error : edgeGroup.get("errors")) {
+            if (error.get("message").asText().contains("400")) {
+                hasValidationError = true;
+                break;
+            }
+        }
+        assertThat(hasValidationError).as("Expected a 400 error from content validation").isTrue();
+
+        // Close the group — GROUP_CLOSED must NOT be affected by content validation
+        closeGroup(groupId);
+
+        // GROUP_CLOSED succeeds (no forbidden content check) → group becomes ARCHIVED
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode group = getEdgeGroup(groupId);
+            assertThat(group.get("status").asText()).isEqualTo("ARCHIVED");
+        });
+
+        // Verify mock history: the forbidden ENTRY_ADDED was rejected, GROUP_CLOSED was accepted
+        JsonNode history = getMockHistory();
+        long noarkaCount = countHistoryByEndpoint(history, "noarka");
+        // 2 ENTRY_ADDED + 1 GROUP_CLOSED = 3 requests to noark-a
+        assertThat(noarkaCount).isEqualTo(3);
+    }
+
     // ==================== HELPER METHODS ====================
 
     private long createGroup(String name) throws Exception {

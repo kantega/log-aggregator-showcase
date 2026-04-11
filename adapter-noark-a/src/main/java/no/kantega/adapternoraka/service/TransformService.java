@@ -22,6 +22,7 @@ public class TransformService {
                 .collect(Collectors.toList());
 
         return new NoarkAPayload(
+                request.getEventType(),
                 request.getGroupName(),
                 "Log group " + request.getGroupId() + " - " + request.getGroupName(),
                 Instant.now().toString(),

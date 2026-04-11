@@ -61,6 +61,50 @@ class NoarkAControllerTest {
     }
 
     @Test
+    void post_entryAddedWithForbiddenContent_returns400() throws Exception {
+        String body = "{\"eventType\":\"ENTRY_ADDED\",\"documents\":[{\"content\":\"contains error text\"}]}";
+
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("{\"error\":\"Content validation failed: entry contains forbidden text\"}"));
+    }
+
+    @Test
+    void post_entryAddedWithForbiddenContentCaseInsensitive_returns400() throws Exception {
+        String body = "{\"eventType\":\"ENTRY_ADDED\",\"documents\":[{\"content\":\"has ERROR in it\"}]}";
+
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().json("{\"error\":\"Content validation failed: entry contains forbidden text\"}"));
+    }
+
+    @Test
+    void post_groupClosedWithForbiddenContent_returnsOk() throws Exception {
+        String body = "{\"eventType\":\"GROUP_CLOSED\",\"documents\":[{\"content\":\"contains error text\"}]}";
+
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(content().string("{\"status\": \"ok\"}"));
+    }
+
+    @Test
+    void post_entryAddedWithCleanContent_returnsOk() throws Exception {
+        String body = "{\"eventType\":\"ENTRY_ADDED\",\"documents\":[{\"content\":\"perfectly fine content\"}]}";
+
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(content().string("{\"status\": \"ok\"}"));
+    }
+
+    @Test
     void post_recordsRequest() throws Exception {
         mockService.reset();
 
