@@ -1,15 +1,36 @@
 ---
 name: test-coverage-parity
-description: Ensures Java FullPipelineIT and Playwright E2E tests maintain equivalent coverage when adding new functionality across microservices and frontend. Use this when implementing new features, error handling, or integration behavior that spans multiple services.
+description: Ensures unit tests, Java FullPipelineIT, and Playwright E2E tests all get updated when adding new functionality across microservices and frontend. Use this when implementing new features, error handling, or integration behavior that spans multiple services.
 ---
 
-# Test Coverage Parity: Java FullPipelineIT + Playwright E2E
+# Test Coverage: Unit Tests + Java FullPipelineIT + Playwright E2E
 
-When adding new functionality to this application, you MUST add test coverage in BOTH test suites. They serve different purposes but must cover the same behavioral scenarios.
+When adding new functionality to this application, you MUST add test coverage at **three levels**. Each level catches different classes of bugs.
 
-## The two test suites
+## The three test levels
 
-### 1. Java FullPipelineIT (`edge/src/test/java/no/kantega/edge/FullPipelineIT.java`)
+### 1. Unit tests (per-service, fast, isolated)
+
+- Each service has its own unit tests under `<service>/src/test/java/`
+- Test individual classes in isolation using Mockito mocks for dependencies
+- Run in milliseconds — the first line of defense for logic bugs
+- Two patterns are used:
+  - **Service tests** (`@ExtendWith(MockitoExtension.class)`) — test business logic with mocked repositories and clients
+  - **Controller tests** (`@WebMvcTest`) — test HTTP layer with MockMvc and mocked service beans
+
+#### Existing unit tests by service
+
+| Service | Test files | What they cover |
+|---------|-----------|----------------|
+| `log-manager/` | `LogManagerServiceTest`, `RabbitMQPublisherTest`, `LogGroupControllerTest` | CRUD logic, event publishing, HTTP endpoints |
+| `edge/` | `ArchiveServiceTest`, `LogEventListenerTest`, `StatusControllerTest` | Adapter routing, retry/status transitions, event handling |
+| `adapter-noark-a/` | `ArchiveControllerTest`, `ArchiveServiceTest`, `TransformServiceTest` | Archive endpoint, Noark A client, JSON transform |
+| `adapter-noark-b/` | `ArchiveControllerTest`, `ArchiveServiceTest`, `ZipServiceTest` | Archive endpoint, Noark B client, ZIP packaging |
+| `external-apis-mock/` | `NoarkAControllerTest`, `TestControllerTest`, `MockServiceTest` | Mock endpoints, setup/reset/history API |
+
+All services also have `OpenApiBackwardsCompatibilityTest` to guard against accidental API contract changes.
+
+### 2. Java FullPipelineIT (`edge/src/test/java/no/kantega/edge/FullPipelineIT.java`)
 
 - Full-stack integration test using TestContainers (MongoDB, MySQL, RabbitMQ)
 - Starts ALL microservices in-process: log-manager, edge, adapter-a, adapter-b, external-apis-mock
@@ -18,7 +39,7 @@ When adding new functionality to this application, you MUST add test coverage in
 - The retry scheduler is DISABLED (`retry.scheduler.enabled=false`) — retries are triggered manually via `POST /api/retry`
 - Tests run in ~30 seconds, no browser needed
 
-### 2. Playwright E2E (`integration-tests/tests/`)
+### 3. Playwright E2E (`integration-tests/tests/`)
 
 - Browser-based tests against the live running stack (`./start-all.sh`)
 - Drives the pipeline through the Angular UI (clicking buttons, filling forms)
@@ -43,7 +64,76 @@ When adding new functionality to this application, you MUST add test coverage in
 
 ## How to add a new scenario
 
-### Step 1: Add the Java test
+### Step 1: Add unit tests for every service you changed
+
+For each service where you added or modified logic, add unit tests in the corresponding test directory. Follow the existing patterns:
+
+**Service logic** — use `@ExtendWith(MockitoExtension.class)` with `@Mock` dependencies:
+
+```java
+@ExtendWith(MockitoExtension.class)
+class YourServiceTest {
+
+    @Mock
+    private SomeDependency dependency;
+
+    // Create the service under test manually (inject mocks via constructor)
+    private YourService createService() {
+        return new YourService(dependency);
+    }
+
+    @Test
+    void yourMethod_givenCondition_expectedBehavior() {
+        YourService service = createService();
+        when(dependency.doSomething(any())).thenReturn(expectedValue);
+
+        var result = service.yourMethod(input);
+
+        assertThat(result).isEqualTo(expected);
+        verify(dependency).doSomething(any());
+    }
+}
+```
+
+**Controller/HTTP layer** — use `@WebMvcTest` with `@MockitoBean` services:
+
+```java
+@WebMvcTest(YourController.class)
+class YourControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockitoBean
+    private YourService yourService;
+
+    @Test
+    void endpoint_returnsExpectedResponse() throws Exception {
+        when(yourService.doSomething(any())).thenReturn(result);
+
+        mockMvc.perform(post("/your/endpoint")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"field\":\"value\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.field").value("expected"));
+    }
+}
+```
+
+**What to unit test:**
+- New business logic (validation, transformation, state transitions)
+- New or changed controller endpoints (status codes, response shapes, error cases)
+- Edge cases and error paths that are hard to trigger in integration tests
+- Any conditional behavior (if/else branches, switch cases)
+
+**Run unit tests:**
+
+```bash
+cd <service> && mvn test                          # all tests in a service
+cd <service> && mvn test -Dtest=YourServiceTest   # specific test class
+```
+
+### Step 2: Add the Java integration test
 
 Add a new `@Test` method to `FullPipelineIT.java`:
 
@@ -78,7 +168,7 @@ Available helpers: `createGroup(name)`, `addEntry(groupId, content)`, `closeGrou
 
 **Remember:** The retry scheduler is disabled in this test. Use `triggerEdgeRetry()` to manually step through retries.
 
-### Step 2: Add the Playwright test
+### Step 3: Add the Playwright test
 
 Create a new spec file in the appropriate `integration-tests/tests/` subdirectory:
 
@@ -119,25 +209,33 @@ Key points:
 - Use `request` fixture for direct API calls to mock/edge services
 - Use `page` for UI interactions and assertions
 
-### Step 3: Verify both pass
+### Step 4: Verify all three levels pass
 
 ```bash
-# Java test
+# Unit tests — run for each service you changed
+cd log-manager && mvn test
+cd edge && mvn test -Dtest='!FullPipelineIT'   # unit tests only (exclude IT)
+cd adapter-noark-a && mvn test
+cd adapter-noark-b && mvn test
+cd external-apis-mock && mvn test
+
+# Java integration test
 cd edge && mvn test -Dtest=FullPipelineIT
 
-# Playwright tests
+# Playwright E2E tests
 cd integration-tests && npx playwright test tests/your-new-test.spec.ts --trace on
 ```
 
 ## Key differences to account for
 
-| Aspect | Java FullPipelineIT | Playwright E2E |
-|--------|-------------------|----------------|
-| Retry scheduler | DISABLED — manual `triggerEdgeRetry()` | ENABLED — runs every 3s automatically |
-| State reset | `@BeforeEach` clears via API (mock reset, delete groups) | `base-test.ts` clicks UI reset button, waits for empty lists |
-| Assertions | Exact values (retryCount=1, status=PENDING) | Relaxed where needed (retryCount>=1, status in [PENDING,FAILED]) |
-| Mock config | `configureMock()` helper method | `request.post(MOCK_URL + '/api/test/setup', ...)` |
-| Pipeline driver | REST API calls to log-manager | UI clicks via data-testid selectors |
+| Aspect | Unit tests | Java FullPipelineIT | Playwright E2E |
+|--------|-----------|-------------------|----------------|
+| Scope | Single class, mocked dependencies | All services + real infra (TestContainers) | Full stack + browser |
+| Speed | Milliseconds | ~30 seconds | Minutes |
+| Retry scheduler | N/A (mocked) | DISABLED — manual `triggerEdgeRetry()` | ENABLED — runs every 3s automatically |
+| State reset | Each test creates its own mocks | `@BeforeEach` clears via API | `base-test.ts` clicks UI reset button |
+| Assertions | Exact, on return values and mock interactions | Exact (retryCount=1, status=PENDING) | Relaxed where needed (retryCount>=1) |
+| What they catch | Logic bugs, edge cases, regressions | Integration bugs, wiring, data flow | UI bugs, user-facing behavior |
 
 ## Mock API reference
 
