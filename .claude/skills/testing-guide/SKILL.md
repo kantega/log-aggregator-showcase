@@ -168,6 +168,8 @@ Available helpers: `createGroup(name)`, `addEntry(groupId, content)`, `closeGrou
 
 **Remember:** The retry scheduler is disabled in this test. Use `triggerEdgeRetry()` to manually step through retries.
 
+**Async assertion pitfall:** Events flow through RabbitMQ -> Edge -> adapters -> mock -> back to Edge -> MongoDB. Don't use mock history as a proxy for Edge state — the mock records the request *before* the response propagates back through the chain. Always `await()` on the final Edge state you care about (e.g. errors or status in MongoDB), not intermediate indicators like mock history counts.
+
 ### Step 3: Add the Playwright test
 
 Create a new spec file in the appropriate `integration-tests/tests/` subdirectory:

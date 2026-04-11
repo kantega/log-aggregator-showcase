@@ -83,6 +83,12 @@ cd integration-tests && npx playwright test --trace on
 cd integration-tests && npx playwright test tests/specific.spec.ts # run one test
 ```
 
+**Build prerequisite for FullPipelineIT:** If your changes touch `adapter-noark-a`, `adapter-noark-b`, or `external-apis-mock`, install them to the local Maven repo first — the edge module pulls these as compiled JARs, not source:
+```bash
+mvn install -pl adapter-noark-a,external-apis-mock -DskipTests
+cd edge && mvn test -Dtest=FullPipelineIT
+```
+
 The `integration-tests/` folder also has Playwright agents for test planning, generation, and healing, plus its own CLAUDE.md with details on running tests.
 
 ## Working with sub-projects

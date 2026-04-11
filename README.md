@@ -116,6 +116,12 @@ npm install
 npx playwright test
 ```
 
+## Demo: live coding with Claude Code
+
+During the presentation, we implement a new feature live using Claude Code. Here's the prompt used:
+
+> Add always-on content validation to the Noark A mock: when an ENTRY_ADDED request body contains "error" (case-insensitive), return 400 with `{"error": "Content validation failed: entry contains forbidden text"}`. GROUP_CLOSED must not be affected. The NoarkAPayload currently doesn't include eventType — add it via TransformService so the mock can distinguish event types. Run `/testing-guide` and add tests at all levels.
+
 ## Hot-reload (development)
 
 - **Angular:** `ng serve` watches files automatically
