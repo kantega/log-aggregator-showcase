@@ -2,7 +2,7 @@
 theme: default
 title: "Claude & The Mystery of Integrations"
 info: |
-  How do you test systems that talk to services you don't control?
+  How Claude Code helps us build and test integrations we can't control
 class: text-center
 drawings:
   persist: false
@@ -11,7 +11,7 @@ transition: slide-left
 
 # Claude & The Mystery of Integrations
 
-Testing third-party integrations you can't control
+How we used AI to help us build and test systems we can't control
 
 ---
 layout: section
@@ -29,97 +29,92 @@ A **log aggregation system** that collects and organizes log entries
 
 - Users create **log groups** and add text entries to them
 - When a group is complete, the user **closes** it
-- The system then needs to **archive** the data to external systems
+- Simple and self-contained
 
 </v-clicks>
 
 ---
 
-# The Architecture (Simplified)
+# The Architecture
 
 ```
   ┌─────────────┐
-  │   Frontend   │  Users interact here
+  │   Frontend   │  Angular web app
   └──────┬──────┘
-         │
+         │ HTTP
   ┌──────▼──────┐
-  │ Log Manager  │  Stores the log data
-  └──────┬──────┘
-         │
-  ┌──────▼──────┐
-  │    Edge      │  Sends data to external archives
-  └──────┬──────┘
-         │
-    ┌────▼────┐
-    │ Noark A │   External archive systems
-    │ Noark B │   (we don't control these!)
-    └─────────┘
+  │ Log Manager  │  Spring Boot + MySQL
+  └─────────────┘
 ```
+
+That's it. A frontend and a backend. Users manage their log groups here.
 
 ---
 layout: section
 ---
 
-# Act 2: The Problem
+# Act 2: The New Requirement
 
 ---
 
-# We Need to Archive Data
+# "We Need to Archive This Data"
 
-When a log group is closed, we must send the data to **external archive systems**
-
-These systems are:
+As a SaaS platform, our customers need their closed log groups archived -- but **each customer uses their own archive provider**
 
 <v-clicks>
 
-- Run by **someone else** (the customer)
-- On **their infrastructure**
-- Following **their rules** (the NOARK standard)
+- Customer A uses **Noark A**, Customer B uses **Noark B**
+- Each provider is a SaaS solution on **their own infrastructure**
+- They follow **their own rules** (the NOARK standard)
 - Sometimes they are **slow**, **broken**, or **unavailable**
 
 </v-clicks>
 
 ---
 
-# Keeping Things Separate
+# Keeping It Separate
 
 We don't want archiving to break our core application
 
-**Solution:** Use a **message queue** (RabbitMQ)
+**Solution:** A separate **Edge service** connected via a message queue
 
 ```
-  Log Manager ──── message ────► Edge ────► External Systems
-     (core)       (queue)      (bridge)
+  ┌─────────────┐
+  │   Frontend   │
+  └──────┬──────┘
+  ┌──────▼──────┐
+  │ Log Manager  │ ──── events ────► RabbitMQ
+  └─────────────┘                      │
+                                ┌──────▼──────┐
+                                │    Edge      │
+                                └──────┬──────┘
+                                  ┌────▼────┐
+                                  │ Noark A │
+                                  │ Noark B │
+                                  └─────────┘
 ```
 
 <v-clicks>
 
 - Log Manager publishes events: *"group created"*, *"entry added"*, *"group closed"*
-- The Edge service picks up events and handles archiving **independently**
+- Edge picks them up and handles archiving **independently**
 - If archiving fails, the core app keeps working fine
 
 </v-clicks>
 
 ---
 
-# Why a Message Queue?
+# That's a Lot of Moving Parts
 
-Think of it like a **mailbox**
+Two adapters, a mock server, a message queue, two databases, six microservices
 
 <v-clicks>
 
-- The sender drops off a letter and walks away
-- The receiver picks it up when ready
-- If the receiver is busy, the letter waits safely in the box
-- The sender never needs to wait or worry
+- How do we **test** all of this?
+- How do we test what happens when a provider is **slow**, **broken**, or **wrong**?
+- How do we make sure we don't break Noark A when we fix something for Noark B?
 
 </v-clicks>
-
----
-layout: section
----
-
-# Act 3: How Do We Test This?
 
 ---
 
@@ -127,36 +122,36 @@ layout: section
 
 ```
         /\
-       /  \       Few, slow, expensive
-      / E2E\
-     /──────\
-    /  Inte-  \
-   / gration   \
-  /─────────────\
- /    Unit        \   Many, fast, cheap
-/___________________\
+       /  \       ▲ More useful information
+      / E2E\      │ "Does the whole system actually work?"
+     /──────\     │
+    /  Inte-  \   │
+   / gration   \  │
+  /─────────────\ │
+ /    Unit        \│ ▼ More speed
+/___________________\ "Is this piece correct?"
 ```
 
 <v-clicks>
 
-- **Unit tests** -- test small pieces in isolation
+- **Unit tests** -- fast, test small pieces in isolation
 - **Integration tests** -- test how pieces work together
-- **E2E (End-to-End) tests** -- test the whole system like a real user would
+- **E2E (End-to-End) tests** -- slow, but tell us the most about our system
 
 </v-clicks>
 
 ---
 
-# The Challenge
+# The Problem with Real Providers
 
-How do we test our connection to external systems we don't control?
+Can't we just test against the real Noark systems?
 
 <v-clicks>
 
-- We can't use the **real systems** in our tests
-- We can't make them return **errors on demand**
-- We can't test what happens when they are **slow**
-- We need something that **behaves like** the real thing
+- Most providers **don't offer a test environment** at all
+- When they do, it's one that **works** -- returns success every time
+- But the most important thing to test is **what happens when things go wrong**
+- Timeouts, server errors, bad responses, downtime -- none of that on demand
 
 </v-clicks>
 
@@ -164,7 +159,7 @@ How do we test our connection to external systems we don't control?
 layout: section
 ---
 
-# Act 4: The Mock Server
+# Act 3: The Mock Server
 
 ---
 
@@ -184,117 +179,86 @@ It pretends to be the real thing, but **we control it**
 </v-clicks>
 
 ---
-
-# Our Mock in Action
-
-```
-  Real production:         Our test setup:
-
-  App ──► Real Noark       App ──► Mock Server
-          (no control)             (full control!)
-```
-
-The mock server exposes a **control panel** where we can configure its behavior at any time
-
----
 layout: section
 ---
 
-# Act 5: Testing with Playwright
+# Act 4: This Is a Lot of Work
 
 ---
 
-# What is Playwright?
+# Building a Mock Server Is Not Free
 
-A tool that **drives a web browser automatically**
+Each archive provider needs its own set of mock endpoints
 
 <v-clicks>
 
-- Opens the browser just like a real user would
-- Clicks buttons, fills in forms, reads text on screen
-- Can verify that the right things appear
-- Runs the same steps every time -- no human error
+- A new **RestController** for every provider
+- Endpoints for each **failure scenario** -- 400, 500, 503, timeouts, ...
+- Very similar work each time, but **not identical** across providers
+- Repetitive, detailed, error-prone -- and it has to be maintained
 
 </v-clicks>
 
 ---
 
-# Playwright in Our Project
+# Perfect Work for a Coding Agent
 
-Our Playwright tests walk through the full user journey:
-
-<v-clicks>
-
-1. Open the app in a browser
-2. Create a new log group
-3. Add entries to the group
-4. Close the group
-5. Verify the data was archived successfully
-
-</v-clicks>
-
----
-layout: section
----
-
-# Act 6: E2E Testing in Java
-
----
-
-# Why Also Test in Java?
-
-Our backend is written in Java -- so we can test the **full pipeline** without a browser
+These tasks are:
 
 <v-clicks>
 
-- Starts all the services automatically
-- Spins up real databases and a real message queue (using containers)
-- Sends API requests directly
-- Checks that data flows all the way through to the archive
+- **Repetitive** -- follow the same patterns every time
+- **Well-defined** -- given an API spec, the structure is predictable
+- **Similar but not equal** -- each provider has its own quirks
+- Exactly the kind of work where an LLM with the right context excels
 
 </v-clicks>
 
 ---
 
-# What the Java Test Covers
+# Enter: Claude Code Skills
+
+A **skill** is a focused instruction file that teaches Claude how to do a specific task
 
 ```
-  API Request ──► Log Manager ──► RabbitMQ ──► Edge ──► Adapters ──► Mock
+  .claude/skills/mock-provider/SKILL.md
 ```
 
 <v-clicks>
 
-- Happy path: everything works
-- One adapter fails: the other still succeeds
-- All adapters fail: system handles it gracefully
-- Retry: fails once, succeeds on retry
+- Written in plain language, lives in the project
+- Describes patterns, helpers, and conventions
+- Claude reads it **when the task matches** -- like a specialist joining the team
+- Developers invoke it with a command: `/mock-provider`
 
 </v-clicks>
 
 ---
-layout: section
----
 
-# Act 7: Controlling the Mock from Tests
+# Skill 1: The Mock Provider Skill
 
----
+This skill understands the mock server's structure
 
-# The Secret Ingredient
-
-We can **change the mock server's behavior from inside our tests**
+Given a new provider's **OpenAPI YAML file**, Claude can:
 
 <v-clicks>
 
-- Before a test: tell the mock to return errors
-- Run the test: see how our app handles the failure
-- Reset the mock: back to normal
-- Next test: try a different scenario
+- Generate the RestController following existing patterns
+- Add all the necessary failure scenario endpoints
+- Wire it into the mock server's control API
+- One command, one new provider -- fully mocked
 
 </v-clicks>
 
 ---
 
-# How It Works
+# But Mocking Is Only Half the Problem
+
+We also need to **test through** the mock -- and control it from our tests
+
+---
+
+# Controlling Mocks from Tests
 
 ```
   Test says:  "Mock, return error 500 for Noark A"
@@ -325,15 +289,119 @@ This lets us test **every scenario** -- not just the happy path
 </v-clicks>
 
 ---
+
+# Skill 2: The Testing Skill
+
+Our `testing-guide` skill teaches Claude how to write tests at **three levels**:
+
+<v-clicks>
+
+- **Unit tests** -- per-service, using Mockito mocks
+- **Java integration test** -- full pipeline with TestContainers
+- **Playwright E2E** -- browser-based tests against the live stack
+
+</v-clicks>
+
+---
+
+# The Skill Knows the Details
+
+Things a developer would need to look up -- the skill already knows:
+
+<v-clicks>
+
+- Which helper methods exist (`createGroup`, `configureMock`, `triggerEdgeRetry`)
+- That the retry scheduler is **disabled** in Java tests but **enabled** in Playwright
+- How to import from `base-test.ts` instead of raw Playwright
+- The mock API endpoints and their parameters
+- The exact assertion patterns that work for async pipelines
+
+</v-clicks>
+
+---
+
+# A Set of Skills, Working Together
+
+```
+  mock-provider skill   →  Knows how to add mock support for a new provider
+  testing-guide skill   →  Knows how to write tests at all three levels
+  CLAUDE.md             →  Knows the architecture, services, and data flow
+```
+
+<v-clicks>
+
+Together, they give Claude the full picture: **providers**, **mocks**, and **tests**
+
+</v-clicks>
+
+---
+layout: section
+---
+
+# Act 5: Demo
+
+---
+
+# Demo
+
+Live: adding a new provider and its test coverage
+
+<v-clicks>
+
+- Give Claude the new provider's OpenAPI spec
+- The mock-provider skill generates the mock endpoints
+- The testing skill generates tests at all three levels
+- Each skill follows the project's established patterns
+- Nothing is forgotten -- mocks, unit tests, integration, *and* E2E
+
+</v-clicks>
+
+---
+layout: section
+---
+
+# Act 6: Why This Matters
+
+---
+
+# Skills as Team Knowledge
+
+Skills capture what a **senior developer would explain** to a new team member
+
+<v-clicks>
+
+- "Don't forget to test at all three levels"
+- "The retry scheduler behaves differently in each test environment"
+- "Use these specific helpers, not raw HTTP calls"
+- "Assert on final state, not intermediate mock history"
+
+</v-clicks>
+
+---
+
+# What We Gain
+
+<v-clicks>
+
+- **Consistency** -- every new feature gets the same thorough test coverage
+- **Speed** -- Claude generates the boilerplate, we focus on the interesting parts
+- **Knowledge sharing** -- the skill file is versioned, reviewed, and improved over time
+- **Onboarding** -- new developers (and AI) can be productive immediately
+
+</v-clicks>
+
+---
 layout: center
 class: text-center
 ---
 
 # Summary
 
-We test integrations we can't control by **replacing them with something we can**
+We teach Claude about our system through **CLAUDE.md** and **skills**
 
-Mock servers + automated tests = confidence that our system handles the real world
+It uses that knowledge to generate adapters, mocks, and tests that follow our patterns
+
+The result: consistent, thorough test coverage -- even for systems we can't control
 
 ---
 layout: end
