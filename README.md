@@ -92,9 +92,40 @@ log-aggregator-showcase/
 ├── adapter-noark-b/          # Spring Boot 3 — ZIP adapter
 ├── external-apis-mock/       # Spring Boot 3 — controllable mock server
 ├── integration-tests/        # Playwright E2E tests
+├── mock-server-archetype/    # Maven archetype for new mock servers
 ├── docker-compose.yml        # MySQL, MongoDB, RabbitMQ
 └── start-all.sh              # Start/stop everything
 ```
+
+## Mock server archetype
+
+The `mock-server-archetype/` directory contains a Maven archetype for generating new mock server projects. It produces a Spring Boot service with a configurable test control API (setup/reset/history/config) but no provider-specific controllers — those are added later using the `/add-mock-provider` Claude Code skill.
+
+### Generate a new mock server
+
+```bash
+cd mock-server-archetype && mvn install
+
+mvn archetype:generate \
+  -DarchetypeCatalog=local \
+  -DarchetypeGroupId=no.kantega \
+  -DarchetypeArtifactId=mock-server-archetype \
+  -DarchetypeVersion=0.0.1-SNAPSHOT \
+  -DgroupId=com.example \
+  -DartifactId=my-mock-server \
+  -Dpackage=com.example.mock \
+  -Dport=8084
+```
+
+### Add a provider
+
+Once the mock server exists, use the Claude Code skill to add provider controllers:
+
+```
+/add-mock-provider
+```
+
+This reads the provider's OpenAPI spec and generates the RestController, test, and wires it into the mock infrastructure.
 
 ## Running tests
 
