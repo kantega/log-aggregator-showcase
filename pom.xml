@@ -10,6 +10,7 @@
     <name>Log Aggregator Showcase</name>
 
     <modules>
+        <module>adapter-archetype</module>
         <module>external-apis-mock</module>
         <module>adapter-noark-a</module>
         <module>adapter-noark-b</module>

@@ -108,10 +108,16 @@ The `/add-mock-provider` Claude Code skill onboards a new Noark-compliant archiv
 
 ### Prerequisite
 
-Install the archetype once:
+Install the archetype to your local Maven repo once. Either run a full reactor build from the root:
 
 ```bash
-cd adapter-archetype && mvn install
+mvn install -DskipTests
+```
+
+…or install just the archetype:
+
+```bash
+mvn install -pl adapter-archetype -DskipTests
 ```
 
 ### Run the skill
