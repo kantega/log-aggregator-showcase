@@ -118,24 +118,26 @@ Two adapters, a mock server, a message queue, two databases, six microservices
 
 ---
 
-# The Testing Pyramid
+# The Testing Diamond
 
 ```
         /\
-       /  \       ▲ More useful information
-      / E2E\      │ "Does the whole system actually work?"
-     /──────\     │
-    /  Inte-  \   │
-   / gration   \  │
-  /─────────────\ │
- /    Unit        \│ ▼ More speed
-/___________________\ "Is this piece correct?"
+       /  \           ▲ More useful information
+      / E2E\          │ "Does the whole system actually work?"
+     /──────\         │
+    /  Inte-  \       │
+   /  gration  \      │ ◆ Sweet spot
+    \          /      │
+     \ Unit  /        │
+      \    /          │ ▼ More speed
+       \  /           "Is this piece correct?"
+        \/
 ```
 
 <v-clicks>
 
 - **Unit tests** -- fast, test small pieces in isolation
-- **Integration tests** -- test how pieces work together
+- **Integration tests** -- the widest part: where we get the most value
 - **E2E (End-to-End) tests** -- slow, but tell us the most about our system
 
 </v-clicks>
