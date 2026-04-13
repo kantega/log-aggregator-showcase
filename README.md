@@ -147,11 +147,17 @@ npm install
 npx playwright test
 ```
 
-## Demo: live coding with Claude Code
+## Demo prompts
 
-During the presentation, we implement a new feature live using Claude Code. Here's the prompt used:
+During the presentation, we show two prompts handed to Claude Code and the branches produced from them. Each prompt adds a new feature plus tests at all three levels (unit, Java integration, Playwright E2E).
 
-> Add always-on content validation to the Noark A mock: when an ENTRY_ADDED request body contains "error" (case-insensitive), return 400 with `{"error": "Content validation failed: entry contains forbidden text"}`. GROUP_CLOSED must not be affected. The NoarkAPayload currently doesn't include eventType — add it via TransformService so the mock can distinguish event types. Run `/testing-guide` and add tests at all levels.
+### Prompt 1 — content validation in the Noark A mock
+
+> Add always-on content validation to the Noark A mock: when an ENTRY_ADDED request body contains "error" (case-insensitive), return 400 with `{"error": "Content validation failed: entry contains forbidden text"}`. GROUP_CLOSED must not be affected. The NoarkAPayload currently doesn't include eventType — add it via TransformService so the mock can distinguish event types. Run `/testing-guide` and add tests at all levels. If anything is not clear, ask before starting.
+
+### Prompt 2 — exponential backoff in Edge
+
+> Replace Edge's fixed 3-second retry with exponential backoff: 3s, 8s, 15s between attempts 1→2, 2→3, 3→4. Each `ArchiveGroup` needs to track when its next retry is due so the scheduler skips groups whose backoff hasn't elapsed. To test this with real timing, extend the mock's `POST /api/test/setup` with a `failResponses: number[]` field that returns those status codes for the next N requests, then falls back to 200. Add a FullPipelineIT scenario with `failResponses: [500, 500]` asserting the group reaches ARCHIVED only after ~11 seconds. Run `/testing-guide` and add tests at all levels. If anything is not clear, ask before starting.
 
 ## Hot-reload (development)
 
