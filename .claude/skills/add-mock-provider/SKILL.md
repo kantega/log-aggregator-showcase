@@ -36,6 +36,7 @@ From `info.title` (e.g. `"Noark C"`):
 | `{providerName}` | PascalCase, no spaces | `NoarkC` |
 | `{providerSlug}` | lowercase, spaces → hyphens | `noark-c` |
 | `{providerKey}` | lowercase, no separators | `noarkc` |
+| `{providerDisplayName}` | `info.title` verbatim, spaces preserved | `Noark C` |
 | `{port}` | next free ≥ 8085 — check root `pom.xml` and `start-all.sh` for conflicts | `8085` |
 
 ## Prerequisite (assumed already done by the user before the demo)
@@ -52,8 +53,12 @@ Do not run this in the skill. If `mvn archetype:generate` in Step 1 fails with "
 
 ### Step 1 — Scaffold the adapter via archetype (Bash, ~10–15s)
 
+**Run archetype:generate in a temp directory, then move the result into the project root.** Running it directly in the project root causes Maven to auto-edit and reformat the parent `pom.xml` (4-space → 2-space, XML decl collapsed) — `<modules>` gets touched as a side effect of generation. Scaffolding in a temp dir avoids that; Step 4b adds the `<module>` line surgically.
+
 ```bash
-mvn -q -B archetype:generate \
+PROJECT_ROOT="$(pwd)"
+TMPDIR="$(mktemp -d)"
+cd "$TMPDIR" && mvn -q -B archetype:generate \
   -DarchetypeCatalog=local \
   -DarchetypeGroupId=no.kantega \
   -DarchetypeArtifactId=adapter-archetype \
@@ -65,12 +70,15 @@ mvn -q -B archetype:generate \
   -Dport={port} \
   -DproviderName={providerName} \
   -DproviderSlug={providerSlug} \
-  -DproviderKey={providerKey}
+  -DproviderKey={providerKey} \
+  && mv "adapter-{providerSlug}" "$PROJECT_ROOT/" \
+  && cd "$PROJECT_ROOT" && rm -rf "$TMPDIR"
 ```
 
 This creates `adapter-{providerSlug}/` with:
 - `pom.xml`, `application.properties` — fully wired
 - `ArchiveController`, `ArchiveService`, `ArchiveRequest`, `ArchiveResult` — generic, no changes needed
+- Tests for application context, controller, service, and OpenAPI backwards-compat — generic, no changes needed
 - **Stubs to customize in Step 2:** `{providerName}Payload.java`, `TransformService.java`, `{providerName}Client.java`, `TransformServiceTest.java`
 
 ### Step 2 — Customize the adapter stubs from the spec
@@ -259,7 +267,7 @@ class {providerName}ControllerTest {
 }
 ```
 
-**3c. Delete `external-apis-mock/src/test/resources/openapi-baseline.json`** (Bash `rm -f`) so it regenerates on next test run.
+**Do not touch `external-apis-mock/src/test/resources/openapi-baseline.json`.** Adding a new controller is an additive (non-breaking) OpenAPI change — `OpenApiBackwardsCompatibilityTest` will pass against the existing baseline. If the user wants a refreshed baseline they can delete it themselves and re-run the test.
 
 ### Step 4 — Wire the adapter into the stack (parallel with Step 1)
 
@@ -284,18 +292,18 @@ adapters[2].url=http://localhost:{port}
    ```bash
    cd "$SCRIPT_DIR/adapter-{providerSlug}"   && mvn spring-boot:run -Dspring-boot.run.arguments="--server.port={port}" &
    ```
-2. After the "Adapter Noark B" URL echo, add:
+2. After the "Adapter Noark B" URL echo, add (use `{providerDisplayName}` so spacing matches the existing "Noark A" / "Noark B" lines, not the PascalCase `{providerName}`):
    ```bash
-   echo "  Adapter {providerName}:    http://localhost:{port}"
+   echo "  Adapter {providerDisplayName}:    http://localhost:{port}"
    ```
 
 ### Step 5 — Stop
 
 Report a concise summary:
 
-- Scaffolded: `adapter-{providerSlug}/` via archetype
+- Scaffolded: `adapter-{providerSlug}/` via archetype (in temp dir, then moved into project root)
 - Customized: `{providerName}Payload.java`, `TransformService.java`, `{providerName}Client.java` (endpoint → `<path-from-spec>`), `TransformServiceTest.java`
-- Added to mock: `{providerName}Controller.java` + test, deleted baseline
+- Added to mock: `{providerName}Controller.java` + test
 - Wired: edge config, root pom.xml, start-all.sh
 
 End with:
@@ -310,12 +318,11 @@ Group tool calls across **three turns**:
 **Turn A (single tool call):** Read the OpenAPI spec.
 
 **Turn B (parallel tool calls — one message, many tools):**
-- Bash: `mvn archetype:generate ...` (Step 1)
+- Bash: archetype:generate in temp dir + `mv` into project root (Step 1)
 - Write: mock `{providerName}Controller.java` (Step 3a)
 - Write: mock `{providerName}ControllerTest.java` (Step 3b)
-- Bash: `rm -f external-apis-mock/src/test/resources/openapi-baseline.json` (Step 3c)
 - Edit: `edge/src/main/resources/application.properties` (Step 4a)
-- Edit: root `pom.xml` (Step 4b)
+- Edit: root `pom.xml` — surgical add of `<module>` line (Step 4b). Safe to run alongside Step 1 because archetype:generate runs in a temp dir and does not touch the project's parent pom.
 - Edit: `start-all.sh` — launcher line (Step 4c.1)
 - Edit: `start-all.sh` — URL echo line (Step 4c.2)
 
@@ -325,7 +332,7 @@ Group tool calls across **three turns**:
 - Edit: `adapter-{providerSlug}/.../service/{providerName}Client.java` — only the `.uri(...)` line (Step 2c)
 - Write: `adapter-{providerSlug}/.../service/TransformServiceTest.java` (Step 2d)
 
-Total: ~13 tool calls in 3 batches. Bound by the archetype (~10–15s) in Turn B.
+Total: ~12 tool calls in 3 batches. Bound by the archetype (~10–15s) in Turn B.
 
 ## Constraints
 
