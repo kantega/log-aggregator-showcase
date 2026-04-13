@@ -128,7 +128,7 @@ class ArchiveServiceTest {
                 new AdapterConfig("adapter-a", "http://a:8082")));
 
         ArchiveGroup group = createGroup(1L, "Test");
-        group.setRetryCount(2);
+        group.setRetryCount(3); // one more failure brings it to MAX_RETRIES=4
         when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(adapterClient.sendToAdapter(any(), any()))
                 .thenReturn(new ArchiveResult(false, "fail", "adapter-a"));
@@ -136,7 +136,131 @@ class ArchiveServiceTest {
         service.notifyAdapters(group, "GROUP_CLOSED");
 
         assertThat(group.getStatus()).isEqualTo(ArchiveStatus.FAILED);
+        assertThat(group.getRetryCount()).isEqualTo(4);
+        assertThat(group.getNextRetryAt()).isNull(); // no further retries scheduled
+    }
+
+    // --- exponential backoff: nextRetryAt is set per attempt ---
+
+    @Test
+    void notifyAdapters_groupClosed_firstFailure_schedulesRetryInThreeSeconds() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(false, "fail", "adapter-a"));
+
+        Instant before = Instant.now();
+        service.notifyAdapters(group, "GROUP_CLOSED");
+
+        assertThat(group.getRetryCount()).isEqualTo(1);
+        assertThat(group.getNextRetryAt()).isNotNull();
+        long delaySeconds = group.getNextRetryAt().getEpochSecond() - before.getEpochSecond();
+        assertThat(delaySeconds).isBetween(2L, 4L);
+    }
+
+    @Test
+    void notifyAdapters_groupClosed_secondFailure_schedulesRetryInEightSeconds() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        group.setRetryCount(1);
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(false, "fail", "adapter-a"));
+
+        Instant before = Instant.now();
+        service.notifyAdapters(group, "GROUP_CLOSED");
+
+        assertThat(group.getRetryCount()).isEqualTo(2);
+        long delaySeconds = group.getNextRetryAt().getEpochSecond() - before.getEpochSecond();
+        assertThat(delaySeconds).isBetween(7L, 9L);
+    }
+
+    @Test
+    void notifyAdapters_groupClosed_thirdFailure_schedulesRetryInFifteenSeconds() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        group.setRetryCount(2);
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(false, "fail", "adapter-a"));
+
+        Instant before = Instant.now();
+        service.notifyAdapters(group, "GROUP_CLOSED");
+
         assertThat(group.getRetryCount()).isEqualTo(3);
+        long delaySeconds = group.getNextRetryAt().getEpochSecond() - before.getEpochSecond();
+        assertThat(delaySeconds).isBetween(14L, 16L);
+    }
+
+    @Test
+    void notifyAdapters_groupClosed_success_clearsNextRetryAt() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup group = createGroup(1L, "Test");
+        group.setRetryCount(1);
+        group.setNextRetryAt(Instant.now().plusSeconds(60));
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter-a"));
+
+        service.notifyAdapters(group, "GROUP_CLOSED");
+
+        assertThat(group.getStatus()).isEqualTo(ArchiveStatus.ARCHIVED);
+        assertThat(group.getNextRetryAt()).isNull();
+    }
+
+    // --- retryDue: gates by nextRetryAt ---
+
+    @Test
+    void retryDue_skipsGroupsWhoseBackoffHasNotElapsed() {
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup notDue = createGroup(1L, "NotDue");
+        notDue.setRetryCount(1);
+        notDue.setNextRetryAt(Instant.now().plusSeconds(60));
+
+        ArchiveGroup due = createGroup(2L, "Due");
+        due.setRetryCount(1);
+        due.setNextRetryAt(Instant.now().minusSeconds(1));
+
+        when(repository.findByStatus(ArchiveStatus.PENDING)).thenReturn(List.of(notDue, due));
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter-a"));
+
+        service.retryDue();
+
+        // Only "due" group should have triggered a retry call
+        verify(adapterClient, times(1)).sendToAdapter(any(), any());
+    }
+
+    @Test
+    void retryDue_retriesGroupsWithNullNextRetryAt() {
+        // Backwards compat: existing PENDING groups without nextRetryAt should be retried immediately
+        ArchiveService service = createService(List.of(
+                new AdapterConfig("adapter-a", "http://a:8082")));
+
+        ArchiveGroup legacy = createGroup(1L, "Legacy");
+        legacy.setRetryCount(1);
+        legacy.setNextRetryAt(null);
+
+        when(repository.findByStatus(ArchiveStatus.PENDING)).thenReturn(List.of(legacy));
+        when(repository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(adapterClient.sendToAdapter(any(), any()))
+                .thenReturn(new ArchiveResult(true, "ok", "adapter-a"));
+
+        service.retryDue();
+
+        verify(adapterClient, times(1)).sendToAdapter(any(), any());
     }
 
     // --- ENTRY_ADDED does not change group status ---

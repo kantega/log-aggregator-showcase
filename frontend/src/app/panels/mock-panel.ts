@@ -69,11 +69,23 @@ import { MockPanelService, MockHistoryEntry } from '../services/mock-panel.servi
                   (click)="applySetup('noarka', noarkAStatus(), noarkADelay())"
                   data-testid="mock-setup-noarka-apply"
                 >Apply</button>
+                <button
+                  class="text-xs font-medium px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                  (click)="failNextOnly('noarka')"
+                  data-testid="mock-setup-noarka-fail-next"
+                  title="Queue a single 500 response on the next request only"
+                >Fail next only</button>
                 <span [class]="'text-xs font-mono px-2 py-0.5 rounded ' + statusBadgeClass('noarka')">
                   {{ currentStatusLabel('noarka') }}
                 </span>
                 @if (currentDelay('noarka') > 0) {
                   <span class="text-xs text-gray-400">+{{ currentDelay('noarka') }}s</span>
+                }
+                @if (queuedFailures('noarka') > 0) {
+                  <span
+                    class="text-xs font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-700"
+                    data-testid="mock-setup-noarka-queued-failures"
+                  >queued: {{ queuedFailures('noarka') }}</span>
                 }
               </div>
 
@@ -113,11 +125,23 @@ import { MockPanelService, MockHistoryEntry } from '../services/mock-panel.servi
                   (click)="applySetup('noarkb', noarkBStatus(), noarkBDelay())"
                   data-testid="mock-setup-noarkb-apply"
                 >Apply</button>
+                <button
+                  class="text-xs font-medium px-2 py-1 rounded bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                  (click)="failNextOnly('noarkb')"
+                  data-testid="mock-setup-noarkb-fail-next"
+                  title="Queue a single 500 response on the next request only"
+                >Fail next only</button>
                 <span [class]="'text-xs font-mono px-2 py-0.5 rounded ' + statusBadgeClass('noarkb')">
                   {{ currentStatusLabel('noarkb') }}
                 </span>
                 @if (currentDelay('noarkb') > 0) {
                   <span class="text-xs text-gray-400">+{{ currentDelay('noarkb') }}s</span>
+                }
+                @if (queuedFailures('noarkb') > 0) {
+                  <span
+                    class="text-xs font-mono px-2 py-0.5 rounded bg-amber-50 text-amber-700"
+                    data-testid="mock-setup-noarkb-queued-failures"
+                  >queued: {{ queuedFailures('noarkb') }}</span>
                 }
               </div>
             </div>
@@ -255,6 +279,15 @@ export class MockPanelComponent {
 
   applySetup(endpoint: string, statusCode: number, delaySec: number): void {
     this.mockService.setup(endpoint, Number(statusCode), Math.round(Number(delaySec) * 1000));
+  }
+
+  failNextOnly(endpoint: string): void {
+    this.mockService.failNextOnly(endpoint, 500);
+  }
+
+  queuedFailures(endpoint: string): number {
+    const config = this.mockService.config();
+    return config?.[endpoint]?.failResponses?.length ?? 0;
   }
 
   statusDotClass(endpoint: string): string {

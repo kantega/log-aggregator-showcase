@@ -105,6 +105,50 @@ class NoarkAControllerTest {
     }
 
     @Test
+    void post_failResponses_consumesQueueThenFallsBackToOk() throws Exception {
+        mockService.reset();
+        MockSetupRequest setup = new MockSetupRequest();
+        setup.setEndpoint("noarka");
+        setup.setFailResponses(java.util.List.of(500, 503));
+        mockService.setup(setup);
+
+        // Request 1: 500 (consumed)
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"data\":1}"))
+                .andExpect(status().isInternalServerError());
+
+        // Request 2: 503 (consumed)
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"data\":2}"))
+                .andExpect(status().isServiceUnavailable());
+
+        // Request 3: queue empty → falls back to default 200
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"data\":3}"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("{\"status\": \"ok\"}"));
+    }
+
+    @Test
+    void post_failResponses_overridesContentValidation() throws Exception {
+        mockService.reset();
+        MockSetupRequest setup = new MockSetupRequest();
+        setup.setEndpoint("noarka");
+        setup.setFailResponses(java.util.List.of(500));
+        mockService.setup(setup);
+
+        // Even an ENTRY_ADDED with forbidden content returns the queued 500, not the 400 from validation
+        String body = "{\"eventType\":\"ENTRY_ADDED\",\"documents\":[{\"content\":\"has error in it\"}]}";
+        mockMvc.perform(post("/api/noarka/archive")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
     void post_recordsRequest() throws Exception {
         mockService.reset();
 

@@ -11,6 +11,7 @@ export interface MockConfig {
   statusCode: number;
   body: string;
   delayMs: number;
+  failResponses?: number[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -64,6 +65,21 @@ export class MockPanelService {
   setup(endpoint: string, statusCode: number, delayMs: number): void {
     this.http
       .post('/mock-api/api/test/setup', { endpoint, statusCode, delayMs })
+      .subscribe(() => this.fetchConfig());
+  }
+
+  /**
+   * Queue a single failure response on the given endpoint so the very next request
+   * returns the given status code (default 500), then normal behavior resumes.
+   */
+  failNextOnly(endpoint: string, statusCode = 500): void {
+    this.http
+      .post('/mock-api/api/test/setup', {
+        endpoint,
+        statusCode: 200,
+        delayMs: 0,
+        failResponses: [statusCode],
+      })
       .subscribe(() => this.fetchConfig());
   }
 

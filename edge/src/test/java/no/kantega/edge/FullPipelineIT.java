@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import no.kantega.adapternoraka.AdapterNoarkAApplication;
 import no.kantega.adapternorakb.AdapterNoarkBApplication;
+import no.kantega.edge.service.ArchiveService;
 import no.kantega.externalapismock.ExternalApisMockApplication;
 import no.kantega.logmanager.LogManagerApplication;
 import org.junit.jupiter.api.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -27,6 +29,7 @@ import org.testcontainers.lifecycle.Startables;
 
 import java.time.Duration;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -169,6 +172,9 @@ class FullPipelineIT {
     @Value("${local.server.port}")
     private int edgePort;
 
+    @Autowired
+    private ArchiveService archiveService;
+
     private final RestClient restClient = RestClient.create();
 
     // ==================== LIFECYCLE ====================
@@ -287,12 +293,20 @@ class FullPipelineIT {
             assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(2);
         });
 
-        // Trigger retry #3 (retryCount reaches MAX_RETRIES=3 → FAILED)
+        // Trigger retry #3 (retryCount=3, still < MAX_RETRIES=4 → PENDING)
+        triggerEdgeRetry();
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode edgeGroup = getEdgeGroup(groupId);
+            assertThat(edgeGroup.get("status").asText()).isEqualTo("PENDING");
+            assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(3);
+        });
+
+        // Trigger retry #4 (retryCount reaches MAX_RETRIES=4 → FAILED)
         triggerEdgeRetry();
         await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
             JsonNode edgeGroup = getEdgeGroup(groupId);
             assertThat(edgeGroup.get("status").asText()).isEqualTo("FAILED");
-            assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(3);
+            assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(4);
         });
     }
 
@@ -542,6 +556,55 @@ class FullPipelineIT {
         assertThat(noarkaCount).isEqualTo(3);
     }
 
+    // ==================== SCENARIO 12: EXPONENTIAL BACKOFF ====================
+
+    @Test
+    @Order(12)
+    void exponentialBackoff_failResponsesTwoFiveHundreds_archivedAfterAboutElevenSeconds() throws Exception {
+        long groupId = createGroup("Backoff Group");
+        addEntry(groupId, "Backoff content");
+
+        // Wait for the ENTRY_ADDED hop to noark-a to land before queuing failures —
+        // otherwise the ENTRY_ADDED request would consume the first queued 500.
+        await().atMost(TIMEOUT).pollInterval(POLL_INTERVAL).untilAsserted(() -> {
+            JsonNode history = getMockHistory();
+            assertThat(countHistoryByEndpoint(history, "noarka")).isGreaterThanOrEqualTo(1);
+        });
+
+        // Queue 2 failures so the next 2 noark-a requests (both GROUP_CLOSED attempts) return 500;
+        // the 3rd attempt finds the queue empty and gets 200.
+        // Backoff schedule: after attempt 1 → wait 3s, after attempt 2 → wait 8s, total ≈ 11s.
+        configureMockFailResponses("noarka", java.util.List.of(500, 500));
+
+        long startMillis = System.currentTimeMillis();
+        closeGroup(groupId);
+
+        // Pump retryDue() in the polling loop to simulate the @Scheduled job (which is
+        // disabled in this test class). retryDue() will only actually retry once each
+        // group's nextRetryAt has elapsed, so the real backoff timing is exercised.
+        await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofMillis(500))
+                .untilAsserted(() -> {
+                    archiveService.retryDue();
+                    JsonNode edgeGroup = getEdgeGroup(groupId);
+                    assertThat(edgeGroup.get("status").asText()).isEqualTo("ARCHIVED");
+                });
+
+        long elapsedMillis = System.currentTimeMillis() - startMillis;
+        // Lower bound: must wait at least 3s (attempt 1→2) + 8s (attempt 2→3) ≈ 11s.
+        // Allow some slack for poll cadence (-500ms) and CI noise.
+        assertThat(elapsedMillis)
+                .as("elapsed=%dms — backoff sum 3s+8s should gate archiving to ≥10s", elapsedMillis)
+                .isGreaterThanOrEqualTo(10_000L);
+        // Upper bound: 11s + a couple extra polls + scheduling jitter
+        assertThat(elapsedMillis)
+                .as("elapsed=%dms — should not greatly exceed 11s sum", elapsedMillis)
+                .isLessThanOrEqualTo(20_000L);
+
+        // Verify retryCount reached 2 (attempt 1 fail + attempt 2 fail + attempt 3 success)
+        JsonNode edgeGroup = getEdgeGroup(groupId);
+        assertThat(edgeGroup.get("retryCount").asInt()).isEqualTo(2);
+    }
+
     // ==================== HELPER METHODS ====================
 
     private long createGroup(String name) throws Exception {
@@ -602,6 +665,16 @@ class FullPipelineIT {
                 .uri("http://localhost:" + mockPort + "/api/test/setup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"endpoint\": \"" + endpoint + "\", \"statusCode\": " + statusCode + ", \"body\": \"" + body.replace("\"", "\\\"") + "\"}")
+                .retrieve()
+                .body(String.class);
+    }
+
+    private void configureMockFailResponses(String endpoint, java.util.List<Integer> failResponses) {
+        String codes = failResponses.stream().map(String::valueOf).collect(Collectors.joining(","));
+        restClient.post()
+                .uri("http://localhost:" + mockPort + "/api/test/setup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"endpoint\": \"" + endpoint + "\", \"failResponses\": [" + codes + "]}")
                 .retrieve()
                 .body(String.class);
     }

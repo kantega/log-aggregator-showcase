@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,18 @@ import java.util.stream.Collectors;
 public class ArchiveService {
 
     private static final Logger log = LoggerFactory.getLogger(ArchiveService.class);
-    private static final int MAX_RETRIES = 3;
+    static final int MAX_RETRIES = 4;
+
+    /**
+     * Backoff delays indexed by the just-failed attempt number (retryCount after increment).
+     * retryCount=1 → wait 3s before next attempt, =2 → 8s, =3 → 15s. retryCount=4 → FAILED.
+     */
+    private static final Duration[] BACKOFF = {
+            null,
+            Duration.ofSeconds(3),
+            Duration.ofSeconds(8),
+            Duration.ofSeconds(15)
+    };
 
     private final ArchiveGroupRepository repository;
     private final AdapterClient adapterClient;
@@ -62,15 +74,19 @@ public class ArchiveService {
         if ("GROUP_CLOSED".equals(eventType)) {
             if (newErrors.isEmpty()) {
                 group.setStatus(ArchiveStatus.ARCHIVED);
+                group.setNextRetryAt(null);
             } else {
                 group.setRetryCount(group.getRetryCount() + 1);
                 if (group.getRetryCount() >= MAX_RETRIES) {
                     group.setStatus(ArchiveStatus.FAILED);
-                    log.error("Group {} failed after {} retries", group.getGroupId(), MAX_RETRIES);
+                    group.setNextRetryAt(null);
+                    log.error("Group {} failed after {} attempts", group.getGroupId(), MAX_RETRIES);
                 } else {
                     group.setStatus(ArchiveStatus.PENDING);
-                    log.warn("Group {} archive attempt failed, will retry ({}/{})",
-                            group.getGroupId(), group.getRetryCount(), MAX_RETRIES);
+                    Duration backoff = BACKOFF[group.getRetryCount()];
+                    group.setNextRetryAt(Instant.now().plus(backoff));
+                    log.warn("Group {} archive attempt {}/{} failed, next retry in {}s",
+                            group.getGroupId(), group.getRetryCount(), MAX_RETRIES, backoff.getSeconds());
                 }
             }
         }
@@ -84,6 +100,9 @@ public class ArchiveService {
         notifyAdapters(group, "GROUP_CLOSED");
     }
 
+    /**
+     * Manual retry endpoint behavior — retries every PENDING group regardless of backoff timer.
+     */
     public void retryFailed() {
         List<ArchiveGroup> pending = repository.findByStatus(ArchiveStatus.PENDING);
         List<ArchiveGroup> retryable = pending.stream()
@@ -92,6 +111,24 @@ public class ArchiveService {
 
         for (ArchiveGroup group : retryable) {
             log.info("Retrying archive for group {} (attempt {}/{})",
+                    group.getGroupId(), group.getRetryCount() + 1, MAX_RETRIES);
+            notifyAdapters(group, "GROUP_CLOSED");
+        }
+    }
+
+    /**
+     * Scheduler-driven retry — only retries groups whose backoff window has elapsed.
+     */
+    public void retryDue() {
+        Instant now = Instant.now();
+        List<ArchiveGroup> pending = repository.findByStatus(ArchiveStatus.PENDING);
+        List<ArchiveGroup> due = pending.stream()
+                .filter(g -> g.getRetryCount() > 0 && g.getRetryCount() < MAX_RETRIES)
+                .filter(g -> g.getNextRetryAt() == null || !g.getNextRetryAt().isAfter(now))
+                .collect(Collectors.toList());
+
+        for (ArchiveGroup group : due) {
+            log.info("Backoff elapsed — retrying archive for group {} (attempt {}/{})",
                     group.getGroupId(), group.getRetryCount() + 1, MAX_RETRIES);
             notifyAdapters(group, "GROUP_CLOSED");
         }

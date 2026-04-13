@@ -17,9 +17,9 @@ public class RetryScheduler {
         this.archiveService = archiveService;
     }
 
-    @Scheduled(fixedDelay = 3000) // every 3 seconds
+    @Scheduled(fixedDelay = 1000) // every 1 second; retryDue() gates on per-group backoff
     public void retryPending() {
         log.debug("Running scheduled retry check");
-        archiveService.retryFailed();
+        archiveService.retryDue();
     }
 }

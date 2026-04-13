@@ -79,6 +79,57 @@ class MockServiceTest {
     }
 
     @Test
+    void consumeFailResponse_returnsNullWhenNoQueue() {
+        assertThat(mockService.consumeFailResponse("noarka")).isNull();
+    }
+
+    @Test
+    void consumeFailResponse_returnsQueuedCodesInOrderThenNull() {
+        MockSetupRequest request = new MockSetupRequest();
+        request.setEndpoint("noarka");
+        request.setFailResponses(List.of(500, 503));
+        mockService.setup(request);
+
+        assertThat(mockService.consumeFailResponse("noarka")).isEqualTo(500);
+        assertThat(mockService.consumeFailResponse("noarka")).isEqualTo(503);
+        assertThat(mockService.consumeFailResponse("noarka")).isNull();
+    }
+
+    @Test
+    void consumeFailResponse_isPerEndpoint() {
+        MockSetupRequest a = new MockSetupRequest();
+        a.setEndpoint("noarka");
+        a.setFailResponses(List.of(500));
+        mockService.setup(a);
+
+        // Consuming on noarkb should not affect noarka
+        assertThat(mockService.consumeFailResponse("noarkb")).isNull();
+        assertThat(mockService.consumeFailResponse("noarka")).isEqualTo(500);
+    }
+
+    @Test
+    void setup_failResponsesPersistedInConfig() {
+        MockSetupRequest request = new MockSetupRequest();
+        request.setEndpoint("noarka");
+        request.setFailResponses(List.of(500, 500));
+        mockService.setup(request);
+
+        assertThat(mockService.getConfig("noarka").getFailResponses()).containsExactly(500, 500);
+    }
+
+    @Test
+    void reset_clearsFailResponses() {
+        MockSetupRequest request = new MockSetupRequest();
+        request.setEndpoint("noarka");
+        request.setFailResponses(List.of(500));
+        mockService.setup(request);
+
+        mockService.reset();
+
+        assertThat(mockService.consumeFailResponse("noarka")).isNull();
+    }
+
+    @Test
     void getHistory_returnsUnmodifiableList() {
         mockService.recordRequest("noarka", "GET", "/test", null);
         List<ReceivedRequest> history = mockService.getHistory();

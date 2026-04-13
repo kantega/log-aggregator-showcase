@@ -40,6 +40,11 @@ public class NoarkAController {
         MockConfig config = mockService.getConfig("noarka");
         mockService.recordRequest("noarka", method, request.getRequestURI(), body);
 
+        Integer queuedFailure = mockService.consumeFailResponse("noarka");
+        if (queuedFailure != null) {
+            return ResponseEntity.status(queuedFailure).body("");
+        }
+
         if ("POST".equals(method) && body != null) {
             ResponseEntity<String> validationError = validateContent(body);
             if (validationError != null) {

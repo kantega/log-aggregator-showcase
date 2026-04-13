@@ -30,7 +30,31 @@ public class MockService {
             config.setBody(request.getBody());
         }
         config.setDelayMs(request.getDelayMs());
+        if (request.getFailResponses() != null && !request.getFailResponses().isEmpty()) {
+            config.getFailResponses().addAll(request.getFailResponses());
+        }
         configs.put(request.getEndpoint(), config);
+    }
+
+    /**
+     * If the endpoint has queued failure responses, removes and returns the next one.
+     * Returns {@code null} when the queue is empty — callers should fall back to the normal config.
+     */
+    public Integer consumeFailResponse(String endpoint) {
+        MockConfig config = configs.get(endpoint);
+        if (config == null) {
+            return null;
+        }
+        List<Integer> queue = config.getFailResponses();
+        if (queue.isEmpty()) {
+            return null;
+        }
+        synchronized (queue) {
+            if (queue.isEmpty()) {
+                return null;
+            }
+            return queue.remove(0);
+        }
     }
 
     public void reset() {

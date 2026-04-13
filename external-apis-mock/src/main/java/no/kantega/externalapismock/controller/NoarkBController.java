@@ -37,6 +37,11 @@ public class NoarkBController {
         MockConfig config = mockService.getConfig("noarkb");
         mockService.recordRequest("noarkb", method, request.getRequestURI(), body);
 
+        Integer queuedFailure = mockService.consumeFailResponse("noarkb");
+        if (queuedFailure != null) {
+            return ResponseEntity.status(queuedFailure).body("");
+        }
+
         if (config.getDelayMs() > 0) {
             try {
                 Thread.sleep(config.getDelayMs());

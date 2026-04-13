@@ -25,6 +25,7 @@ public class ArchiveGroup {
     private List<ArchiveError> errors = new ArrayList<>();
     private List<ArchiveEvent> archiveEvents = new ArrayList<>();
     private int retryCount = 0;
+    private Instant nextRetryAt;
     private Instant createdAt;
     private Instant updatedAt;
 
