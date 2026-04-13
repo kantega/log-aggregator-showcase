@@ -149,7 +149,7 @@ npx playwright test
 
 ## Demo prompts
 
-During the presentation, we show two prompts handed to Claude Code and the branches produced from them. Each prompt adds a new feature plus tests at all three levels (unit, Java integration, Playwright E2E).
+During the presentation, we show the audience the two prompts below. The resulting branches have already been merged into `main`, so the features they describe are part of the codebase. Each prompt added a new feature plus tests at all three levels (unit, Java integration, Playwright E2E).
 
 ### Prompt 1 — content validation in the Noark A mock
 

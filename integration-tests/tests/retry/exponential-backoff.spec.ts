@@ -1,19 +1,18 @@
-import { test, expect, EDGE_URL } from '../base-test';
+import { test, expect, MOCK_URL, EDGE_URL } from '../base-test';
 
 test.describe('Retry Mechanism — Exponential Backoff', () => {
-  test('"Fail next only" UI button queues a single 500, group recovers on first retry', async ({
+  test('noark-a 500 on GROUP_CLOSED, reset to 200, scheduler retries after backoff → ARCHIVED', async ({
     page,
     request,
   }) => {
     test.setTimeout(60000);
 
-    // Use the UI button to queue a single failure on noark-a
-    const failNextButton = page.getByTestId('mock-setup-noarka-fail-next');
-    await expect(failNextButton).toBeVisible();
-    await failNextButton.click();
-
-    // The queued count badge should appear, confirming the mock accepted the queue
-    await expect(page.getByTestId('mock-setup-noarka-queued-failures')).toBeVisible();
+    // Configure noark-a to fail persistently so GROUP_CLOSED is guaranteed to fail.
+    // (The "Fail next only" queue is consumed by the earliest event — GROUP_CREATED —
+    // which does not increment retryCount, so it can't exercise the backoff path.)
+    await request.post(`${MOCK_URL}/api/test/setup`, {
+      data: { endpoint: 'noarka', statusCode: 500 },
+    });
 
     const groupName = `Backoff Group ${Date.now()}`;
 
@@ -32,8 +31,22 @@ test.describe('Retry Mechanism — Exponential Backoff', () => {
 
     await page.getByTestId('close-group-button').click();
 
-    // Eventually the group must reach ARCHIVED. The 1st GROUP_CLOSED attempt fails (queued 500),
-    // then after a 3s backoff the 2nd attempt should succeed (queue exhausted → 200).
+    // Wait until the initial GROUP_CLOSED attempt has failed and Edge is in PENDING with retryCount ≥ 1
+    // (this is the moment the scheduler is armed to retry after the 3s backoff window).
+    await expect(async () => {
+      const groupsResp = await request.get(`${EDGE_URL}/api/groups`);
+      const groups: Array<{ name: string; retryCount: number; status: string }> =
+        await groupsResp.json();
+      const ourGroup = groups.find((g) => g.name === groupName);
+      expect(ourGroup).toBeDefined();
+      expect(ourGroup!.status).toBe('PENDING');
+      expect(ourGroup!.retryCount).toBeGreaterThanOrEqual(1);
+    }).toPass({ timeout: 20000 });
+
+    // Flip the mock to 200 — the scheduler's next retry (after the exponential backoff window) should succeed.
+    await request.post(`${MOCK_URL}/api/test/reset`);
+
+    // Eventually the group must reach ARCHIVED via the auto-retry scheduler (no manual /api/retry call).
     await expect(async () => {
       const edgeCards = page.locator('button[data-testid^="edge-group-"]');
       const count = await edgeCards.count();
@@ -51,7 +64,7 @@ test.describe('Retry Mechanism — Exponential Backoff', () => {
       expect(foundArchived).toBe(true);
     }).toPass({ timeout: 30000 });
 
-    // Verify Edge state: retryCount should be ≥ 1 (one failure happened) and the queue is now empty
+    // Verify Edge state: status ARCHIVED and at least one retry happened
     const groupsResp = await request.get(`${EDGE_URL}/api/groups`);
     const groups: Array<{ name: string; retryCount: number; status: string }> =
       await groupsResp.json();

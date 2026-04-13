@@ -6,7 +6,7 @@
   "author": "",
   "type": "commonjs",
   "scripts": {
-    "test": "playwright test",
+    "test": "playwright test --trace on",
     "test-ui": "playwright test --ui",
     "show-report": "playwright show-report"
   },

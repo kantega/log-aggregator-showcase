@@ -1,7 +1,7 @@
 import { test, expect, MOCK_URL, EDGE_URL } from '../base-test';
 
 test.describe('Retry Mechanism — Both Adapters Fail, Retries Exhausted', () => {
-  test('both adapters return 500, manual retries step retryCount 1→2→3 then FAILED', async ({ page, request }) => {
+  test('both adapters return 500, auto-retries step retryCount 1→2→3→4 then FAILED', async ({ page, request }) => {
     test.setTimeout(90000);
 
     // Configure BOTH adapters to fail
@@ -28,15 +28,15 @@ test.describe('Retry Mechanism — Both Adapters Fail, Retries Exhausted', () =>
     await page.getByTestId('close-group-button').click();
     await expect(page.getByTestId('group-detail-status')).toHaveText('CLOSED');
 
-    // The auto-retry scheduler (3s interval) will exhaust retries automatically.
-    // Wait for the group to reach FAILED with retryCount=3 (MAX_RETRIES).
+    // The auto-retry scheduler will exhaust retries automatically with exponential backoff (3s, 8s, 15s).
+    // Wait for the group to reach FAILED with retryCount=4 (MAX_RETRIES: 1 initial GROUP_CLOSED + 3 retries).
     await expect(async () => {
       const edgeGroupsResponse = await request.get(`${EDGE_URL}/api/groups`);
       const edgeGroups = await edgeGroupsResponse.json();
       const edgeGroup = edgeGroups.find((g: any) => g.name === groupName);
       expect(edgeGroup).toBeDefined();
       expect(edgeGroup.status).toBe('FAILED');
-      expect(edgeGroup.retryCount).toBe(3);
+      expect(edgeGroup.retryCount).toBe(4);
     }).toPass({ timeout: 45000 });
 
     // Verify errors exist for both adapters
