@@ -147,6 +147,8 @@ npm install
 npx playwright test
 ```
 
+The latest Playwright test results are published at https://kantega.github.io/log-aggregator-showcase/.
+
 ## Demo prompts
 
 During the presentation, we show the audience the two prompts below. The resulting branches have already been merged into `main`, so the features they describe are part of the codebase. Each prompt added a new feature plus tests at all three levels (unit, Java integration, Playwright E2E).
