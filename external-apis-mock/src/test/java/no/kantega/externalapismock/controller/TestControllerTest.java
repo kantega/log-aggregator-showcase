@@ -53,19 +53,18 @@ class TestControllerTest {
     }
 
     @Test
-    void config_returnsDefaultConfigs() throws Exception {
+    void config_returnsEmptyWhenNothingConfigured() throws Exception {
         mockService.reset();
 
         mockMvc.perform(get("/api/test/config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.noarka.statusCode").value(200))
-                .andExpect(jsonPath("$.noarka.delayMs").value(0))
-                .andExpect(jsonPath("$.noarkb.statusCode").value(200))
-                .andExpect(jsonPath("$.noarkb.delayMs").value(0));
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
     void config_returnsCustomConfigAfterSetup() throws Exception {
+        mockService.reset();
+
         mockMvc.perform(post("/api/test/setup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"endpoint\":\"noarka\",\"statusCode\":500,\"delayMs\":100}"))
@@ -74,8 +73,7 @@ class TestControllerTest {
         mockMvc.perform(get("/api/test/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.noarka.statusCode").value(500))
-                .andExpect(jsonPath("$.noarka.delayMs").value(100))
-                .andExpect(jsonPath("$.noarkb.statusCode").value(200));
+                .andExpect(jsonPath("$.noarka.delayMs").value(100));
     }
 
     @Test

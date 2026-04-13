@@ -1,0 +1,136 @@
+openapi: 3.0.3
+info:
+  title: Noark C
+  description: |
+    Third-party Noark-compliant archive provider used by some of our customers.
+    The real Noark C runs on the customer's infrastructure and exposes a REST
+    API for submitting archive records. We cannot control it from our test
+    environments, so we mock it via `external-apis-mock`.
+  version: "1.0.0"
+  contact:
+    name: Noark C Provider Support
+    email: support@noarkc.example
+
+servers:
+  - url: https://noark-c.example.customer/api
+    description: Customer-hosted production instance
+  - url: http://localhost:8084/api/noarkc
+    description: Local mock (external-apis-mock)
+
+tags:
+  - name: records
+    description: Archive records
+
+paths:
+  /records:
+    post:
+      tags: [records]
+      summary: Create an archive record
+      operationId: createRecord
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArchiveRecord"
+      responses:
+        "201":
+          description: Record created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordAck"
+        "400":
+          description: Invalid request payload
+        "503":
+          description: Provider temporarily unavailable
+
+  /records/{recordId}:
+    get:
+      tags: [records]
+      summary: Fetch an archive record
+      operationId: getRecord
+      parameters:
+        - in: path
+          name: recordId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Record found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchiveRecord"
+        "404":
+          description: Not found
+
+  /records/{recordId}/documents:
+    post:
+      tags: [records]
+      summary: Attach a document to an existing record
+      operationId: attachDocument
+      parameters:
+        - in: path
+          name: recordId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Document"
+      responses:
+        "200":
+          description: Document attached
+        "404":
+          description: Record not found
+
+components:
+  schemas:
+    ArchiveRecord:
+      type: object
+      required: [recordId, title, createdAt]
+      properties:
+        recordId:
+          type: string
+          example: "rec-2026-0001"
+        title:
+          type: string
+          example: "Log group 42 — incident review"
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Document"
+
+    Document:
+      type: object
+      required: [documentId, content]
+      properties:
+        documentId:
+          type: string
+          example: "doc-001"
+        title:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    RecordAck:
+      type: object
+      properties:
+        recordId:
+          type: string
+        status:
+          type: string
+          example: "accepted"

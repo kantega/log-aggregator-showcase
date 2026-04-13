@@ -114,6 +114,8 @@ log-aggregator-showcase/
 
 ## What's left to do
 
+Nothing — all planned work is complete.
+
 ### Completed GitHub issues
 - [x] **Issue #2** — Upgrade right-side panels: WebSocket RabbitMQ view, detailed Edge panel with retry, mock setup controls, global RESET button
   - [x] #5 — UI Design: overall layout and panel redesign
@@ -124,9 +126,9 @@ log-aggregator-showcase/
   - [x] #10 — Global RESET button
   - [x] #11 — Documentation updates (SpringDoc OpenAPI + Swagger UI + backwards compatibility tests)
 
-### Integration tests
-- [ ] Error handling test — configure mock to 500 → close group → verify FAILED in Edge
-- [ ] Exponential backoff test — mock fails twice then succeeds → verify retries with increasing delay (this test is run on stage after live-coding backoff)
+### Integration tests — COMPLETE
+- [x] Error handling test — configure mock to 500 → close group → verify FAILED in Edge
+- [x] Exponential backoff test — mock fails twice then succeeds → verify retries with increasing delay
 
 ### API Documentation — COMPLETE
 - [x] SpringDoc OpenAPI (Swagger UI) on all 5 services
@@ -134,16 +136,18 @@ log-aggregator-showcase/
 - [x] OpenAPI backwards compatibility tests using openapi-diff on all 5 services
 - [x] CLAUDE.md updated to point to live Swagger UI instead of manual endpoint lists
 
-### Claude Code infra
+### Claude Code infra — COMPLETE
 - [x] Root `CLAUDE.md` — architecture, service map, tech stack, port map, demo flow, sub-project guidance
 - [x] `integration-tests/CLAUDE.md` — Playwright setup, agents, mock API usage
 - [x] `frontend/.claude/CLAUDE.md` — Angular/TypeScript best practices
-- [ ] Skills for the live demo (add retry logic, create integration test, setup mock behavior)
+- [x] Skills for the live demo (add retry logic, create integration test, setup mock behavior)
 
 ### Presentation demo
+Two of the three demo prompts (content validation in Noark A mock, exponential backoff in Edge) have already been run and merged into `main`. The third (onboarding Noark C) is run live on stage via the `/add-mock-provider` skill.
+
 1. Run happy path test — show green results
 2. Run error test — show failure captured in Edge MongoDB
-3. Live-code exponential backoff with Claude Code, run backoff test to prove it works
+3. Live onboarding of Noark C: run `/add-mock-provider use specs/noark-c.yaml`, then run unit tests on the touched modules. Walk through Prompts 1 and 2 from their pre-merged diffs as supporting examples.
 
 ## Agent workflow notes
 

@@ -92,40 +92,37 @@ log-aggregator-showcase/
 ├── adapter-noark-b/          # Spring Boot 3 — ZIP adapter
 ├── external-apis-mock/       # Spring Boot 3 — controllable mock server
 ├── integration-tests/        # Playwright E2E tests
-├── mock-server-archetype/    # Maven archetype for new mock servers
+├── adapter-archetype/        # Maven archetype used by /add-mock-provider to scaffold new adapters
 ├── docker-compose.yml        # MySQL, MongoDB, RabbitMQ
 └── start-all.sh              # Start/stop everything
 ```
 
-## Mock server archetype
+## Adding a new provider
 
-The `mock-server-archetype/` directory contains a Maven archetype for generating new mock server projects. It produces a Spring Boot service with a configurable test control API (setup/reset/history/config) but no provider-specific controllers — those are added later using the `/add-mock-provider` Claude Code skill.
+The `/add-mock-provider` Claude Code skill onboards a new Noark-compliant archive provider end-to-end. Given an OpenAPI spec, it:
 
-### Generate a new mock server
+1. Scaffolds a new adapter service (`adapter-<slug>/`) via `adapter-archetype`
+2. Fills in the provider-specific payload, transform, and client endpoint from the spec
+3. Adds a controller to `external-apis-mock/` for the new provider
+4. Wires the new adapter into `edge/`, root `pom.xml`, and `start-all.sh`
+
+### Prerequisite
+
+Install the archetype once:
 
 ```bash
-cd mock-server-archetype && mvn install
-
-mvn archetype:generate \
-  -DarchetypeCatalog=local \
-  -DarchetypeGroupId=no.kantega \
-  -DarchetypeArtifactId=mock-server-archetype \
-  -DarchetypeVersion=0.0.1-SNAPSHOT \
-  -DgroupId=com.example \
-  -DartifactId=my-mock-server \
-  -Dpackage=com.example.mock \
-  -Dport=8084
+cd adapter-archetype && mvn install
 ```
 
-### Add a provider
+### Run the skill
 
-Once the mock server exists, use the Claude Code skill to add provider controllers:
+In Claude Code, from the repo root:
 
 ```
-/add-mock-provider
+/add-mock-provider use specs/noark-c.yaml
 ```
 
-This reads the provider's OpenAPI spec and generates the RestController, test, and wires it into the mock infrastructure.
+The skill does not run tests or builds — after it finishes, run `mvn install -DskipTests` and the unit tests yourself.
 
 ## Running tests
 
@@ -151,15 +148,19 @@ The latest Playwright test results are published at https://kantega.github.io/lo
 
 ## Demo prompts
 
-During the presentation, we show the audience the two prompts below. The resulting branches have already been merged into `main`, so the features they describe are part of the codebase. Each prompt added a new feature plus tests at all three levels (unit, Java integration, Playwright E2E).
+The presentation features three prompts. Prompts 1 and 2 were run against the codebase ahead of time and merged into `main`; on stage we show the prompt, then walk through the resulting code and tests. Prompt 3 is the one live moment of the talk — we run it on stage and watch Claude onboard a new archive provider end-to-end via the `/add-mock-provider` skill.
 
-### Prompt 1 — content validation in the Noark A mock
+### Prompt 1 — content validation in the Noark A mock *(pre-merged)*
 
 > Add always-on content validation to the Noark A mock: when an ENTRY_ADDED request body contains "error" (case-insensitive), return 400 with `{"error": "Content validation failed: entry contains forbidden text"}`. GROUP_CLOSED must not be affected. The NoarkAPayload currently doesn't include eventType — add it via TransformService so the mock can distinguish event types. Run `/testing-guide` and add tests at all levels. If anything is not clear, ask before starting.
 
-### Prompt 2 — exponential backoff in Edge
+### Prompt 2 — exponential backoff in Edge *(pre-merged)*
 
 > Replace Edge's fixed 3-second retry with exponential backoff: 3s, 8s, 15s between attempts 1→2, 2→3, 3→4. Each `ArchiveGroup` needs to track when its next retry is due so the scheduler skips groups whose backoff hasn't elapsed. To test this with real timing, extend the mock's `POST /api/test/setup` with a `failResponses: number[]` field that returns those status codes for the next N requests, then falls back to 200. Add a FullPipelineIT scenario with `failResponses: [500, 500]` asserting the group reaches ARCHIVED only after ~11 seconds. Run `/testing-guide` and add tests at all levels. If anything is not clear, ask before starting.
+
+### Prompt 3 — onboarding a new archive provider (Noark C) *(live on stage)*
+
+> `/add-mock-provider use specs/noark-c.yaml`
 
 ## Hot-reload (development)
 

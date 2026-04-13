@@ -71,9 +71,6 @@ public class MockService {
     }
 
     public Map<String, MockConfig> getAllConfigs() {
-        Map<String, MockConfig> result = new java.util.HashMap<>();
-        result.put("noarka", getConfig("noarka"));
-        result.put("noarkb", getConfig("noarkb"));
-        return result;
+        return Collections.unmodifiableMap(new java.util.HashMap<>(configs));
     }
 }

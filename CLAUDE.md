@@ -106,10 +106,10 @@ Two sub-projects have their own `.claude/` configuration with specialized tools:
 
 ## Presentation demo flow
 
-This project exists for a live demo with three acts:
+This project exists for a presentation demo with three acts. Two of the three demo prompts in `README.md` were run ahead of time and merged into `main`; the third is run live on stage.
 1. **Happy path** — run the e2e test showing the full create → archive flow working
 2. **Error handling** — configure the mock to return 500s, show Edge captures failures in MongoDB
-3. **Live coding** — implement exponential backoff with Claude Code, run the backoff test to prove it works
+3. **Live onboarding of Noark C** — run `/add-mock-provider use specs/noark-c.yaml`; the skill scaffolds `adapter-noark-c/` via `adapter-archetype`, fills in the provider-specific payload/transform/client from the spec, adds a mock controller, and wires Edge + root pom.xml + start-all.sh. After it finishes, run `mvn install -DskipTests && mvn test` on the touched modules to show the generated tests pass. Prompts 1 and 2 (content validation, exponential backoff) are walked through from their pre-merged diffs, not re-run.
 
 ## Important context for Claude Code agents
 
