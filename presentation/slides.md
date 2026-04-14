@@ -18,6 +18,19 @@ We built a system that integrates with external archive providers we don't contr
 -->
 
 ---
+
+<div style="display: flex; justify-content: center; align-items: center; gap: 4rem;">
+  <div style="text-align: center;">
+    <img src="/pawel.wesolowski.jpeg" style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover;" />
+    <h3>Pawel Wesolowski</h3>
+  </div>
+  <div style="text-align: center;">
+    <img src="/martin.larsson.jpeg" style="width: 200px; height: 200px; border-radius: 50%; object-fit: cover;" />
+    <h3>Martin Larsson</h3>
+  </div>
+</div>
+
+---
 layout: section
 ---
 
