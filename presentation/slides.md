@@ -249,12 +249,14 @@ These tasks are repetitive — follow the same patterns every time. Well-defined
 -->
 
 ---
+layout: section
+---
+
+# Act 5: Claude Code Skills
+
+---
 
 # Claude Code Skills
-
-```
-  .claude/skills/mock-provider/SKILL.md
-```
 
 <v-clicks>
 
@@ -272,6 +274,10 @@ A skill is a focused instruction file that teaches Claude how to do a specific t
 ---
 
 # Mock Provider Skill
+
+```
+  .claude/skills/mock-provider/SKILL.md
+```
 
 <v-clicks>
 
@@ -397,7 +403,7 @@ mock-provider skill knows how to add mock support for a new provider. testing-gu
 layout: section
 ---
 
-# Act 5: Demo
+# Act 6: Demo
 
 ---
 
@@ -411,7 +417,7 @@ Live demo: give Claude the new provider's OpenAPI spec. The mock-provider skill 
 layout: section
 ---
 
-# Act 6: Why This Matters
+# Act 7: Why This Matters
 
 ---
 
@@ -462,6 +468,40 @@ The result: consistent, thorough test coverage -- even for systems we can't cont
 
 <!--
 We teach Claude about our system through CLAUDE.md and skills. It uses that knowledge to generate adapters, mocks, and tests that follow our patterns. The result: consistent, thorough test coverage — even for systems we can't control.
+-->
+
+---
+
+# Skills at Different Levels
+
+<v-clicks>
+
+- **Project level** -- testing patterns, mock setup, coding conventions
+- **Team level** -- review checklists, deployment procedures, incident response
+- **Org level** -- security policies, compliance requirements, API standards
+
+</v-clicks>
+
+<!--
+Skills aren't just for one project. At the project level, they capture testing patterns and mock setup like we showed. At the team level, they can encode review checklists or deployment procedures. At the org level, they can enforce security policies, compliance requirements, or API standards. The higher the level, the more people benefit from the same encoded knowledge.
+-->
+
+---
+
+# Skills vs Agents
+
+<v-clicks>
+
+- **Skill** -- instructions that tell the agent *how* to do something
+- **Agent** -- the LLM that *does* the work
+- Skills are passive -- they don't run, they inform
+- Agents are active -- they read skills and act on them
+- Same agent, different skills, different expertise
+
+</v-clicks>
+
+<!--
+A skill is a document — it doesn't do anything on its own. It's like a runbook or a checklist. An agent is the LLM that reads the skill and acts on it. The skill tells the agent how to do the task, but the agent decides when and how to apply it. You can give the same agent different skills for different tasks — mock generation, test writing, code review — and it becomes a specialist each time. Skills are the knowledge, agents are the action.
 -->
 
 ---
